@@ -360,40 +360,36 @@ def init_llm(user_id, input, image_data_url=None):
     return response
 
 def summarize_event(user_id, input, is_test=False, image_data_url=None):
-    try:
-        instruction = init_llm(user_id, input, image_data_url)
-        if isinstance(instruction, str) and instruction.startswith('add_event:'):
-            try:
-                new_event = save_event_to_calendar(instruction, user_id, is_test)
-                return new_event
-            except Exception as e:
-                print(f"########### Error adding to g-cal: {str(e)}", flush=True)
-                return "Sorry, I couldn not add the event to your calendar."
-        
-        elif isinstance(instruction, str) and instruction.startswith('retrieve_event:'):
-            try:
-                events = get_upcoming_events(user_id, is_test)
-                return events
-            except Exception as e:
-                print(f"########### Error retrieving events: {str(e)}", flush=True)
-                return "Sorry, I am unable to fetch your events at the moment."
+    instruction = init_llm(user_id, input, image_data_url)
+    if isinstance(instruction, str) and instruction.startswith('add_event:'):
+        try:
+            new_event = save_event_to_calendar(instruction, user_id, is_test)
+            return new_event
+        except Exception as e:
+            print(f"########### Error adding to g-cal: {str(e)}", flush=True)
+            return "Sorry, I couldn not add the event to your calendar."
+    
+    elif isinstance(instruction, str) and instruction.startswith('retrieve_event:'):
+        try:
+            events = get_upcoming_events(user_id, is_test)
+            return events
+        except Exception as e:
+            print(f"########### Error retrieving events: {str(e)}", flush=True)
+            return "Sorry, I am unable to fetch your events at the moment."
 
-        elif isinstance(instruction, str) and instruction.startswith('timezone_set:'):
-            try:
-                timezone = instruction.split('timezone_set: ')[1].strip()
-                updated_timezone = add_update_timezone(user_id, timezone)
-                if updated_timezone:
-                    return f'Thank you for providing your timezone. Your timezone has been set to {timezone}. Please proceed with your event details.'
-                else:
-                    return f'Failed to set your timezone. Please try again.'
-            except Exception as e:
-                print(f"########### Error updating timezone: {str(e)}", flush=True)
-                return "Sorry, I could not set your timezone. Please try again."
-        else:
-            return instruction
-    except Exception as e:
-        print(f"########### Error processing instruction: {str(e)}", flush=True)
-        return "Sorry, I could not process your request. Please try again."
+    elif isinstance(instruction, str) and instruction.startswith('timezone_set:'):
+        try:
+            timezone = instruction.split('timezone_set: ')[1].strip()
+            updated_timezone = add_update_timezone(user_id, timezone)
+            if updated_timezone:
+                return f'Thank you for providing your timezone. Your timezone has been set to {timezone}. Please proceed with your event details.'
+            else:
+                return f'Failed to set your timezone. Please try again.'
+        except Exception as e:
+            print(f"########### Error updating timezone: {str(e)}", flush=True)
+            return "Sorry, I could not set your timezone. Please try again."
+    else:
+        return instruction
 
 def generate_auth_link(user_id):
     token = secrets.token_hex(16)
