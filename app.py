@@ -90,7 +90,7 @@ def receive_whatsapp():
         elif incoming_msg == "authenticate test":
             is_test = True
             use_test_account(user_id)
-            resp.message(
+            return resp.message(
                 "🔧 You've been connected to our public test calendar.\n\n"
                 "You can access and view calendar here:\n"
                 "📅 https://calendar.google.com/calendar/embed?src=kalenda.bot%40gmail.com \n\n"
