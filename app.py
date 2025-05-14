@@ -90,13 +90,14 @@ def receive_whatsapp():
         elif incoming_msg == "authenticate test":
             is_test = True
             use_test_account(user_id)
-            return resp.message(
+            resp.message(
                 "🔧 You've been connected to our public test calendar.\n\n"
                 "You can access and view calendar here:\n"
                 "📅 https://calendar.google.com/calendar/embed?src=kalenda.bot%40gmail.com \n\n"
                 "You can use this bot to add a new event via text or image, and retrieve events of today and tomorrow\n"
                 "If you wish to connect your own calendar, please type 'authenticate' to get started.\n\n"
             )
+            return str(resp)
         else:
             oauth_connection_verification = verify_oauth_connection(user_id)
             if not oauth_connection_verification:
