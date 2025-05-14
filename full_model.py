@@ -14,7 +14,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from datetime import datetime, timedelta, fromisoformat
+from datetime import datetime, timedelta
 import json
 from cryptography.fernet import Fernet
 import secrets
@@ -205,8 +205,8 @@ def save_event_to_calendar(instruction, user_id, is_test=False):
     name = event_details['name']
     start_date_str = event_details['start_date']
     end_date_str = event_details['end_date']
-    start_date = fromisoformat(start_date_str)
-    end_date = (start_date + timedelta(hours=1)) if end_date_str is None else fromisoformat(end_date_str)
+    start_date = datetime.fromisoformat(start_date_str)
+    end_date = (start_date + timedelta(hours=1)) if end_date_str is None else datetime.fromisoformat(end_date_str)
     timezone = event_details['timezone'] if event_details['timezone'] else 'Asia/Jakarta'
     location = event_details['location']
     description = event_details['description']
