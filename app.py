@@ -42,7 +42,7 @@ def auth():
         session["state"] = state
         return redirect(auth_url)
     except Exception as e:
-        print(f"########### ERROR in auth: {e}")
+        print(f"########### ERROR in auth: {e}", flush=True)
         return "❌ Error during authentication. Please try again."
 
 @app.route("/oauthcallback")
@@ -63,13 +63,13 @@ def oauth_callback():
         try:
             save_token(user_id, creds)
         except Exception as e:
-            print(f"########### ERROR saving token: {e}")
+            print(f"########### ERROR saving token: {e}", flush=True)
             return "❌ Error saving token. Please try again."
         
-        print(f"########### User {user_id} connected to Google Calendar.")
+        print(f"########### User {user_id} connected to Google Calendar.", flush=True)
         return "✅ Google Calendar connected! You can now use the bot."
     except Exception as e:
-        print(f"########### ERROR in oauth_callback: {e}")
+        print(f"########### ERROR in oauth_callback: {e}", flush=True)
         return "❌ Error during oauth callback. Please try again."
 
 @app.route('/webhook', methods=['POST'])
@@ -111,12 +111,12 @@ def receive_whatsapp():
         else:
             image_data_url = None
         
-        print(f"########### Starting process: {incoming_msg}, {user_id}, image: {image_data_url}")
+        print(f"########### Starting process: {incoming_msg}, {user_id}, image: {image_data_url}", flush=True)
         reply_text = summarize_event(user_id, incoming_msg, is_test, image_data_url)
         resp.message(reply_text)
         return str(resp)
     except Exception as e:
-        print(f"######## ERROR processing webhook: {e}")
+        print(f"######## ERROR processing webhook: {e}", flush=True)
         resp = MessagingResponse()
         resp.message(f"We are sorry, the bot is currently unavailable or under maintenance. Please try again later.")
         return str(resp)

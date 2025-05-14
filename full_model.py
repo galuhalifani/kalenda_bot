@@ -330,7 +330,7 @@ def add_update_timezone(user_id, timezone):
             )
         return True
     except Exception as e:
-        print(f"Error updating timezone for user {user_id}:", e)
+        print(f"Error updating timezone for user {user_id}: {e}", flush=True)
         return False
 
 def init_llm(user_id, input, image_data_url=None):
@@ -355,7 +355,7 @@ def init_llm(user_id, input, image_data_url=None):
         temperature=0,
         max_tokens=1000
     )
-    print(f'####### full response: {llm}')
+    print(f'####### full response: {llm}', flush=True)
     response = llm['choices'][0]['message']['content']
     return response
 
@@ -367,7 +367,7 @@ def summarize_event(user_id, input, is_test=False, image_data_url=None):
                 new_event = save_event_to_calendar(instruction, user_id, is_test)
                 return new_event
             except Exception as e:
-                print(f"########### Error adding to g-cal: {str(e)}")
+                print(f"########### Error adding to g-cal: {str(e)}", flush=True)
                 return "Sorry, I couldn not add the event to your calendar."
         
         elif isinstance(instruction, str) and instruction.startswith('retrieve_event:'):
@@ -375,7 +375,7 @@ def summarize_event(user_id, input, is_test=False, image_data_url=None):
                 events = get_upcoming_events(user_id, is_test)
                 return events
             except Exception as e:
-                print(f"########### Error retrieving events: {str(e)}")
+                print(f"########### Error retrieving events: {str(e)}", flush=True)
                 return "Sorry, I am unable to fetch your events at the moment."
 
         elif isinstance(instruction, str) and instruction.startswith('timezone_set:'):
@@ -387,12 +387,12 @@ def summarize_event(user_id, input, is_test=False, image_data_url=None):
                 else:
                     return f'Failed to set your timezone. Please try again.'
             except Exception as e:
-                print(f"########### Error updating timezone: {str(e)}")
+                print(f"########### Error updating timezone: {str(e)}", flush=True)
                 return "Sorry, I could not set your timezone. Please try again."
         else:
             return instruction
     except Exception as e:
-        print(f"########### Error processing instruction: {str(e)}")
+        print(f"########### Error processing instruction: {str(e)}", flush=True)
         return "Sorry, I could not process your request. Please try again."
 
 def generate_auth_link(user_id):
