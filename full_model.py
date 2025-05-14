@@ -282,7 +282,7 @@ def prompt_init(input, timezone=None):
         6. The event participants (write all the participants emails, or omit if not available)
     
     Then ask the user to confirm the event details. If the user confirms, you will respond SYSTEM FORMAT:
-        'add_event: {
+        'add_event: {{
             "name": name,
             "start_date": start_date,
             "end_date": end_date,
@@ -291,7 +291,7 @@ def prompt_init(input, timezone=None):
             "description": description,
             "reminder": reminder (convert to minutes, write 0 if not available),
             "participants": participants (in a list format)
-        }'
+        }}'
 
     If the user doesn't confirm, you will ask user to specify the correct details, revise the event details, return the corrected USER FORMAT, and ask for confirmation again (repeat the process until user confirms).
     If after three revision attempts the user doesn't confirm, you will respond with "Event not added" and stop the process.
