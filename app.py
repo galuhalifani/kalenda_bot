@@ -19,7 +19,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def root():
-    return "Instant Immigration Bot API is running."
+    return "Kalenda Bot API is running."
 
 @app.route("/auth")
 def auth():
