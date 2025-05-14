@@ -14,13 +14,35 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from cal import get_calendar_service, get_upcoming_events
 from datetime import datetime, timedelta, fromisoformat
 import json
+from cryptography.fernet import Fernet
+import secrets
+import pickle
 
 load_dotenv(override=True)
 MONGODB_URL=os.getenv('MONGO_URI')
 OPENAI_KEY=os.getenv('OPENAI_API_KEY')
+CLIENT_ID = os.environ["GOOGLE_CLIENT_ID"]
+CLIENT_SECRET = os.environ["GOOGLE_CLIENT_SECRET"]
+TEST_CLIENT_ID = os.environ["TEST_CLIENT_ID"]
+TEST_CLIENT_SECRET = os.environ["TEST_CLIENT_SECRET"]
+TOKEN_URI = os.environ["TOKEN_URI"]
+AUTH_URI = os.environ["AUTH_URI"]
+CONNECT_AUTH_URI = os.environ["CONNECT_AUTH_URI"]
+REDIRECT_URI = os.environ["REDIRECT_URI"]
+SCOPES = ['https://www.googleapis.com/auth/calendar.events']
+
+def get_credentials():
+    return {
+        "web": {
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+            "redirect_uris": [REDIRECT_URI],
+            "auth_uri": AUTH_URI,
+            "token_uri": TOKEN_URI
+        }
+    }
 
 def init_mongodb():
     try:
@@ -35,45 +57,88 @@ client = init_mongodb()
 if client:
     db = client['kalenda']
     user_collection = db['user']
+    tokens_collection = db['tokens']
 else:
     user_collection = None
+    tokens_collection = None
 
-SCOPES = ['https://www.googleapis.com/auth/calendar.events']
+def encrypt_token(token_str):
+    FERNET_KEY = os.environ["FERNET_KEY"]
+    fernet = Fernet(FERNET_KEY)
+    return fernet.encrypt(token_str.encode()).decode()
 
-def get_calendar_service():
-    creds = None
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+def decrypt_token(token_str_encrypted):
+    FERNET_KEY = os.environ["FERNET_KEY"]
+    fernet = Fernet(FERNET_KEY)
+    return fernet.decrypt(token_str_encrypted.encode()).decode()
 
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
+def save_token(user_id, creds):
+    tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "access_token": encrypt_token(creds.token),
+            "refresh_token": encrypt_token(creds.refresh_token),
+            "scopes": SCOPES,
+            "expiry": creds.expiry.isoformat(),
+            "is_using_test_account": False
+        }},
+    upsert=True)
 
-        # Save the token for future use
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
+def get_calendar_service(user_id, is_test=False):
+    user_token = tokens_collection.find_one({"user_id": user_id})
+
+    is_using_test_account = user_token.get("is_using_test_account", True) or is_test
+
+    if not user_token:
+        message = "User not authenticated. Type 'authenticate' to connect to your Google Calendar, or type 'authenticate test' to use joint testing calendar."
+        raise Exception(message)
+    
+    access_token = user_token.get("access_token")
+    refresh_token = user_token.get("refresh_token")
+
+    creds = Credentials(
+        token=decrypt_token(access_token),
+        refresh_token=decrypt_token(refresh_token),
+        token_uri=TOKEN_URI,
+        client_id=TEST_CLIENT_ID if is_using_test_account else CLIENT_ID,
+        client_secret=TEST_CLIENT_SECRET if is_using_test_account else CLIENT_SECRET,
+        scopes=SCOPES
+    )
+
+    is_creds_expired = creds.expired and creds.refresh_token
+    if is_creds_expired:
+        creds.refresh(Request())
+        tokens_collection.update_one(
+            {"user_id": user_id},
+            {"$set": {
+                "access_token": encrypt_token(creds.token), 
+                "expiry": creds.expiry.isoformat()}}
+        )
+        if is_using_test_account:
+            tokens_collection.update_one(
+                {"user_id": "test_shared_calendar"},
+                {"$set": {
+                    "access_token": encrypt_token(creds.token), 
+                    "expiry": creds.expiry.isoformat()}}
+        )
 
     service = build('calendar', 'v3', credentials=creds)
     return service
-
-def list_calendars():
-    service = get_calendar_service()
+    
+def list_calendars(service):
     calendar_list = service.calendarList().list().execute()
     return calendar_list
 
-def get_upcoming_events():
-    service = get_calendar_service()
-    now = datetime.utcnow()
+def get_upcoming_events(user_id, is_test=False):
+    service = get_calendar_service(user_id, is_test)
+    now = datetime.now()
     end_of_tomorrow = now + timedelta(days=2)
 
     now_str = now.isoformat() + 'Z'
     end_of_tomorrow_str = end_of_tomorrow.isoformat() + 'Z'
 
     try:
-        calendars = list_calendars()
+        calendars = list_calendars(service)
     except Exception as e:
         print(f"########### Error retrieving calendar list: {str(e)}")
         calendars = None
@@ -126,8 +191,8 @@ def get_upcoming_events():
                     })
         return all_events
 
-def save_event_to_calendar(instruction):
-    service = get_calendar_service()
+def save_event_to_calendar(instruction, user_id, is_test=False):
+    service = get_calendar_service(user_id, is_test)
 
     try:
         json_str = instruction.split('add_event:')[1].strip()
@@ -294,12 +359,12 @@ def init_llm(user_id, input, image_data_url=None):
     response = llm['choices'][0]['message']['content']
     return response
 
-def summarize_event(user_id, input, image_data_url=None):
+def summarize_event(user_id, input, is_test=False, image_data_url=None):
     try:
         instruction = init_llm(user_id, input, image_data_url)
         if isinstance(instruction, str) and instruction.startswith('add_event:'):
             try:
-                new_event = save_event_to_calendar(instruction)
+                new_event = save_event_to_calendar(instruction, user_id, is_test)
                 return new_event
             except Exception as e:
                 print(f"########### Error adding to g-cal: {str(e)}")
@@ -307,7 +372,7 @@ def summarize_event(user_id, input, image_data_url=None):
         
         elif isinstance(instruction, str) and instruction.startswith('retrieve_event:'):
             try:
-                events = get_upcoming_events()
+                events = get_upcoming_events(user_id, is_test)
                 return events
             except Exception as e:
                 print(f"########### Error retrieving events: {str(e)}")
@@ -329,3 +394,59 @@ def summarize_event(user_id, input, image_data_url=None):
     except Exception as e:
         print(f"########### Error processing instruction: {str(e)}")
         return "Sorry, I could not process your request. Please try again."
+
+def generate_auth_link(user_id):
+    token = secrets.token_hex(16)
+    expires = datetime.now() + timedelta(minutes=30)
+
+    tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "auth_token_link": token,
+            "auth_token_link_expiry": expires.isoformat()
+        }},
+    upsert=True
+    )
+
+    return f"{CONNECT_AUTH_URI}?user_id={user_id}&token={token}"
+
+def verify_auth_token(user_id, token):
+    record = tokens_collection.find_one({"auth_token_link": token})
+    record_user_id = record.get("user_id") if record else None
+
+    token_is_valid = record_user_id == user_id
+
+    if not record or not token_is_valid:
+        return "❌ Invalid link. Please try again. Type 'authenticate' to generate a new link."
+    
+    if datetime.now() > datetime.fromisoformat(record["auth_token_link_expiry"]):
+        return "❌ Link is expired. Please try again. Type 'authenticate' to generate a new link."
+    
+    return "verified"
+
+def verify_oauth_connection(user_id):
+    user_token = tokens_collection.find_one({"user_id": user_id, "refresh_token": {"$exists": True}})
+    if not user_token:
+        return False
+    
+    return True
+
+def use_test_account(user_id):
+    test_tokens = tokens_collection.find_one({"user_id": 'test_shared_calendar'})
+    if not test_tokens:
+        raise Exception("Test account not found in database.")
+
+    test_access_token = test_tokens.get("access_token")
+    test_refresh_token = test_tokens.get("refresh_token")
+    test_expiry = test_tokens.get("expiry")
+
+    tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "access_token": test_access_token,
+            "refresh_token": test_refresh_token,
+            "scopes": SCOPES,
+            "expiry": test_expiry,
+            "is_using_test_account": True
+        }},
+    upsert=True)
