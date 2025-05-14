@@ -4,14 +4,9 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from flask import Flask, request, jsonify
-from deployment.streamlit.model import ask
-from deployment.streamlit.handler import save_feedback, starts_with_question_keyword, check_question_feedback, check_user, split_message, translate_text, deduct_chat_balance, check_user_balance, add_question_ticker
-from deployment.streamlit.text import greeting
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 from threading import Thread
-from deep_translator import GoogleTranslator
-from langdetect import detect
 from full_model import summarize_event, check_timezone
 
 from flask import request

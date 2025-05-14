@@ -2,14 +2,11 @@ from __future__ import print_function
 import sys
 import os
 from threading import Thread
-from deep_translator import GoogleTranslator
-from langdetect import detect
 import pandas as pd
 from pymongo import MongoClient
 import openai
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime
 import pytz
 from twilio.rest import Client
 import os.path
@@ -18,11 +15,12 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from cal import get_calendar_service, get_upcoming_events
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, fromisoformat
+import json
 
 load_dotenv(override=True)
 MONGODB_URL=os.getenv('MONGO_URI')
-OPENAI_KEY=os.getenv('OPENAI_KEY')
+OPENAI_KEY=os.getenv('OPENAI_API_KEY')
 
 def init_mongodb():
     try:
@@ -61,39 +59,89 @@ def get_calendar_service():
     service = build('calendar', 'v3', credentials=creds)
     return service
 
+def list_calendars():
+    service = get_calendar_service()
+    calendar_list = service.calendarList().list().execute()
+    return calendar_list
+
 def get_upcoming_events():
     service = get_calendar_service()
-    now = datetime.datetime.now().isoformat() + 'Z'
-    end_of_tomorrow = now + datetime.timedelta(days=2).isoformat() + 'Z'
+    now = datetime.utcnow()
+    end_of_tomorrow = now + timedelta(days=2)
 
-    events_result = service.events().list(
-        calendarId='primary', 
-        timeMin=now,
-        timeMax=end_of_tomorrow,
-        singleEvents=True,
-        orderBy='startTime'
-    ).execute()
+    now_str = now.isoformat() + 'Z'
+    end_of_tomorrow_str = end_of_tomorrow.isoformat() + 'Z'
 
-    events = events_result.get('items', [])
+    try:
+        calendars = list_calendars()
+    except Exception as e:
+        print(f"########### Error retrieving calendar list: {str(e)}")
+        calendars = None
 
-    if not events:
-        print("No upcoming events found.")
-        return []
-    else:
-        for event in events:
-            start = event['start'].get('dateTime', event['start'].get('date'))
-            print(f"{start} - {event['summary']}")
+    all_events = []
+    if not calendars:
+        events_result = service.events().list(
+            calendarId='primary', 
+            timeMin=now_str,
+            timeMax=end_of_tomorrow_str,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+
+        events = events_result.get('items', [])
+        print(f"########### Calendar events: {events}")
+
+        if not events:
+            print("No upcoming events found.")
+            return []
+        else:
+            for event in events:
+                start = event['start'].get('dateTime', event['start'].get('date'))
+                print(f"{start} - {event['summary']}")
         return events
+    
+    else:
+        for calendar in calendars['items']:
+            calendar_id = calendar['id']
+            events_result = service.events().list(
+                calendarId=calendar_id, 
+                timeMin=now_str,
+                timeMax=end_of_tomorrow_str,
+                singleEvents=True,
+                orderBy='startTime'
+            ).execute()
+
+            events = events_result.get('items', [])
+            print(f"########### Calendar events: {events}")
+
+            if not events:
+                print("No upcoming events found.")
+                continue
+            else:
+                for event in events:
+                    all_events.append({
+                        "calendar": calendar['summary'],
+                        "start": event['start'].get('dateTime', event['start'].get('date')),
+                        "summary": event.get('summary', '(No Title)')
+                    })
+        return all_events
 
 def save_event_to_calendar(instruction):
     service = get_calendar_service()
-    event_details = instruction.split('add_event: ')[1].split('}')[0] + '}'
+
+    try:
+        json_str = instruction.split('add_event:')[1].strip()
+        print(f"####### JSON string: {json_str}")
+        event_details = json.loads(json_str)
+    except Exception as e:
+        print(f"####### Failed to parse event JSON: {e}")
+        return "Sorry, I couldn't understand your event details."
 
     name = event_details['name']
     start_date_str = event_details['start_date']
     end_date_str = event_details['end_date']
-    start_date = datetime.fromisoformat(start_date_str)
-    end_date = (start_date + timedelta(hours=1)) if end_date_str is None else datetime.fromisoformat(end_date_str)
+    start_date = fromisoformat(start_date_str)
+    end_date = (start_date + timedelta(hours=1)) if end_date_str is None else fromisoformat(end_date_str)
     timezone = event_details['timezone'] if event_details['timezone'] else 'Asia/Jakarta'
     location = event_details['location']
     description = event_details['description']
