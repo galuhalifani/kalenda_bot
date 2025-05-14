@@ -1,5 +1,4 @@
 Flask
-flask
 openai
 python-dotenv
 pymongo
@@ -12,3 +11,6 @@ deep-translator
 langdetect
 pandas
 requests
+cryptography
+requests
+pillow

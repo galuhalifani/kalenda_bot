@@ -78,7 +78,7 @@ def save_token(user_id, creds):
         {"$set": {
             "access_token": encrypt_token(creds.token),
             "refresh_token": encrypt_token(creds.refresh_token),
-            "scopes": SCOPES,
+            "scopes": ",".join(SCOPES),
             "expiry": creds.expiry.isoformat(),
             "is_using_test_account": False
         }},
