@@ -23,46 +23,54 @@ def root():
 
 @app.route("/auth")
 def auth():
-    user_id = request.args.get("user_id")
-    token = request.args.get("token")
-    verification = verify_auth_token(user_id, token)
+    try:
+        user_id = request.args.get("user_id")
+        token = request.args.get("token")
+        verification = verify_auth_token(user_id, token)
 
-    if verification != 'verified':
-        return verification
-    
-    session['user_id'] = user_id
-    credentials = get_credentials()
-    flow = Flow.from_client_config(
-        credentials,
-        scopes=SCOPES,
-        redirect_uri=REDIRECT_URI
-    )
-    auth_url, state = flow.authorization_url(prompt='consent')
-    session["state"] = state
-    return redirect(auth_url)
+        if verification != 'verified':
+            return verification
+        
+        session['user_id'] = user_id
+        credentials = get_credentials()
+        flow = Flow.from_client_config(
+            credentials,
+            scopes=SCOPES,
+            redirect_uri=REDIRECT_URI
+        )
+        auth_url, state = flow.authorization_url(prompt='consent')
+        session["state"] = state
+        return redirect(auth_url)
+    except Exception as e:
+        print(f"########### ERROR in auth: {e}")
+        return "❌ Error during authentication. Please try again."
 
 @app.route("/oauthcallback")
 def oauth_callback():
-    state = session["state"]
-    user_id = session["user_id"]
-    credentials = get_credentials()
-    flow = Flow.from_client_config(
-        credentials,
-        scopes=["https://www.googleapis.com/auth/calendar.events"],
-        state=state,
-        redirect_uri=REDIRECT_URI #/oauthcallback route
-    )
-    flow.fetch_token(authorization_response=request.url)
-    creds = flow.credentials
-
     try:
-        save_token(user_id, creds)
+        state = session["state"]
+        user_id = session["user_id"]
+        credentials = get_credentials()
+        flow = Flow.from_client_config(
+            credentials,
+            scopes=["https://www.googleapis.com/auth/calendar.events"],
+            state=state,
+            redirect_uri=REDIRECT_URI #/oauthcallback route
+        )
+        flow.fetch_token(authorization_response=request.url)
+        creds = flow.credentials
+
+        try:
+            save_token(user_id, creds)
+        except Exception as e:
+            print(f"########### ERROR saving token: {e}")
+            return "❌ Error saving token. Please try again."
+        
+        print(f"########### User {user_id} connected to Google Calendar.")
+        return "✅ Google Calendar connected! You can now use the bot."
     except Exception as e:
-        print(f"########### ERROR saving token: {e}")
-        return "❌ Error saving token. Please try again."
-    
-    print(f"########### User {user_id} connected to Google Calendar.")
-    return "✅ Google Calendar connected! You can now use the bot."
+        print(f"########### ERROR in oauth_callback: {e}")
+        return "❌ Error during oauth callback. Please try again."
 
 @app.route('/webhook', methods=['POST'])
 def receive_whatsapp():
