@@ -6,16 +6,18 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 from flask import Flask, request, jsonify, redirect, session
 from google_auth_oauthlib.flow import Flow
 from twilio.twiml.messaging_response import MessagingResponse
-from twilio.rest import Client
-from threading import Thread
-from full_model import summarize_event, check_timezone, get_credentials, SCOPES, REDIRECT_URI, save_token, generate_auth_link, verify_auth_token, verify_oauth_connection, use_test_account
+from creds import *
+from model import summarize_event, mode
+from helpers import extract_phone_number, get_image_data_url
+from auth import verify_auth_token_link, verify_oauth_connection, save_token, get_credentials, generate_auth_link
+from database import check_user, check_user_balance, deduct_chat_balance, use_test_account
+from text import greeting, using_test_calendar
+from session_memory import delete_user_memory
 import secrets
-
 from flask import request
-import requests
-import base64
 
 app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", secrets.token_hex(16))
 
 @app.route("/")
 def root():
@@ -26,17 +28,20 @@ def auth():
     try:
         user_id = request.args.get("user_id")
         token = request.args.get("token")
-        verification = verify_auth_token(user_id, token)
+        print(f"########### Auth request: {user_id}, {token}", flush=True)
+        verification = verify_auth_token_link(user_id, token)
 
+        print(f"########### Verification result: {verification}", flush=True)
         if verification != 'verified':
             return verification
         
         session['user_id'] = user_id
         credentials = get_credentials()
+        print(f"########### Credentials: {credentials}", flush=True)
         flow = Flow.from_client_config(
             credentials,
             scopes=SCOPES,
-            redirect_uri=REDIRECT_URI
+            redirect_uri=REDIRECT_URI if mode == 'production' else REDIRECT_URI_TEST
         )
         auth_url, state = flow.authorization_url(prompt='consent')
         session["state"] = state
@@ -47,15 +52,16 @@ def auth():
 
 @app.route("/oauthcallback")
 def oauth_callback():
+    print(f"########### OAuth callback triggered", flush=True)
     try:
         state = session["state"]
         user_id = session["user_id"]
         credentials = get_credentials()
         flow = Flow.from_client_config(
             credentials,
-            scopes=["https://www.googleapis.com/auth/calendar.events"],
+            scopes=SCOPES,
             state=state,
-            redirect_uri=REDIRECT_URI #/oauthcallback route
+            redirect_uri=REDIRECT_URI if mode == 'production' else REDIRECT_URI_TEST
         )
         flow.fetch_token(authorization_response=request.url)
         creds = flow.credentials
@@ -76,45 +82,96 @@ def oauth_callback():
 def receive_whatsapp():
     try:
         incoming_msg = request.values.get("Body", "").strip()
-        user_id = request.values.get("From", "").strip()
+        record_user_id = request.values.get("From", "").strip()
+        user_id = extract_phone_number(record_user_id)
         media_url = request.form.get("MediaUrl0")
         content_type = request.form.get("MediaContentType0") 
 
         resp = MessagingResponse()
         is_test = False
         
-        if incoming_msg == "authenticate":
-            auth_link = generate_auth_link(user_id)
-            resp.message(f"🔐 Click to connect your Google Calendar:\n{auth_link}")
-            return str(resp)
-        elif incoming_msg == "authenticate test":
-            is_test = True
-            use_test_account(user_id)
-            resp.message(
-                "🔧 You've been connected to our public test calendar.\n\n"
-                "You can access and view calendar here:\n"
-                "📅 https://calendar.google.com/calendar/embed?src=kalenda.bot%40gmail.com \n\n"
-                "You can use this bot to add a new event via text or image, and retrieve events of today and tomorrow\n"
-                "If you wish to connect your own calendar, please type 'authenticate' to get started.\n\n"
-            )
-            return str(resp)
-        else:
-            oauth_connection_verification = verify_oauth_connection(user_id)
-            if not oauth_connection_verification:
-                resp.message("❌ You need to connect your Google Calendar first. Please type 'authenticate' to get the link, or type 'authenticate test' to use joint testing calendar")
-                return str(resp)
-    
-        if media_url:
-            response = requests.get(media_url)
-            image_data = base64.b64encode(response.content).decode('utf-8')
+        try:
+            user = check_user(user_id)
+            if (user['status'] == 'new'):
+                print(f"########### Send initial greetings: {user_id}")
+                resp.message(greeting)
 
-            image_data_url = f"data:{content_type};base64,{image_data}"
-        else:
-            image_data_url = None
+            is_balance_available = check_user_balance(user)
+
+            if not is_balance_available:
+                reply = "Sorry, you have reached your daily conversation limit. You can start a new conversation tomorrow."
+                resp.message(reply)
+                return str(resp)
+        except Exception as e:
+            print(f"########### ERROR initial checkings: {e}", flush=True)
+
+        try:
+            if incoming_msg == "authenticate":
+                auth_link = generate_auth_link(user_id)
+                resp.message(f"🔐 Click to connect your Google Calendar:\n{auth_link}")
+                return str(resp)
+            elif incoming_msg == "authenticate test":
+                is_test = True
+                use_test_account(user_id)
+                resp.message(using_test_calendar)
+                return str(resp)
+            else:
+                oauth_connection_verification = verify_oauth_connection(user_id)
+                print(f"########### Verified OAuth connection: {user_id}, {oauth_connection_verification}", flush=True)
+                if oauth_connection_verification == False:
+                    resp.message(using_test_calendar)
+        except Exception as e:
+            resp.message("Error during authentication. Please try again.")
+            print(f"########### ERROR in authentication: {e}", flush=True)
+            return str(resp)
+    
+        image_data_url = get_image_data_url(media_url, content_type) if media_url else None
         
         print(f"########### Starting process: {incoming_msg}, {user_id}, image: {image_data_url}", flush=True)
+
+        try:
+            delete_user_memory(user_id)
+        except Exception as e:
+            print(f"########### ERROR deleting memory: {e}", flush=True)
+
         reply_text = summarize_event(user_id, incoming_msg, is_test, image_data_url)
-        resp.message(reply_text)
+        if not isinstance(reply_text, str):
+            reply_text = str(reply_text)  # or a fallback message
+        
+        try:
+            is_too_long = len(reply_text) > 1400
+            if is_too_long:
+                max_length=1400
+                split = [reply_text[i:i+max_length] for i in range(0, len(reply_text), max_length)]
+                trimmed_reply = split[0]
+                print(f"########### trimmed REPLY: {trimmed_reply}", flush=True)
+                resp.message(f"Your list is too long, I can only show partial results. For more complete list, please specify a shorter date range.\n\n")
+                resp.message(f"{trimmed_reply}")
+                deduct_chat_balance(user['user_details'], user_id)
+                return str(resp)
+            else:
+                print(f"########### REPLY: {reply_text}", flush=True)
+                try:
+                    resp.message(reply_text)
+                    print(f"########### REPLY sent: {reply_text}", flush=True)
+                    deduct_chat_balance(user['user_details'], user_id)
+                    return str(resp)
+                except Exception as e:
+                    print(f"########### ERROR sending final message: {e}", flush=True)
+                    resp.message("Sorry, I couldn't send final message.")
+        except Exception as e:
+            print(f"❌ Error sending message to WhatsApp: {str(e)}", flush=True)
+            resp.message("Sorry, I couldn't send the message.")
+
+        print(f"########### Reply length: {len(reply_text)}", flush=True)
+        print(f"########### End process {user_id}, input: {incoming_msg}, image: {True if image_data_url else False}", flush=True)
+
+        # try:
+        #     deduct_chat_balance(user['user_details'], user_id)
+        # except Exception as e:
+        #     print(f"Error deducting chat balance: {str(e)}")
+        # print(f"########### Balance deducted", flush=True)
+
         return str(resp)
     except Exception as e:
         print(f"######## ERROR processing webhook: {e}", flush=True)
@@ -124,4 +181,4 @@ def receive_whatsapp():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)

@@ -1,114 +1,186 @@
-# import sys
-# import os
-# from threading import Thread
-# from deep_translator import GoogleTranslator
-# from langdetect import detect
-# import pandas as pd
-# from pymongo import MongoClient
-# import openai
-# from dotenv import load_dotenv
-# from apscheduler.schedulers.background import BackgroundScheduler
-# from datetime import datetime
-# import pytz
-# from twilio.rest import Client
-# from __future__ import print_function
-# import datetime
-# import os.path
-# from google.oauth2.credentials import Credentials
-# from google_auth_oauthlib.flow import InstalledAppFlow
-# from google.auth.transport.requests import Request
-# from googleapiclient.discovery import build
-# from cal import get_calendar_service, get_upcoming_events
+from __future__ import print_function
+import sys
+import os
+from threading import Thread
+import pandas as pd
+from pymongo import MongoClient
+from openai import OpenAI
+from dotenv import load_dotenv
+from apscheduler.schedulers.background import BackgroundScheduler
+import pytz
+from twilio.rest import Client
+import os.path
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
+from datetime import datetime, timedelta, timezone as tzn
+import json
+from cryptography.fernet import Fernet
+import secrets
+import requests
+import base64
+from requests.auth import HTTPBasicAuth
+import re
+from creds import *
+from database import user_collection, tokens_collection, check_user, check_timezone, add_update_timezone, deduct_chat_balance, check_user_balance
+from auth import decrypt_token, encrypt_token, save_token
+from helpers import clean_instruction_block, readable_date, clean_description, extract_phone_number, get_image_data_url, split_message,send_whatsapp_message
+from calendar_service import get_user_calendar_timezone, get_calendar_service, save_event_to_draft, save_event_to_calendar, get_upcoming_events, update_event_draft, transform_events_to_text
+from session_memory import session_memories, get_user_memory, max_chat_stored
+from prompt import prompt_init
 
-# load_dotenv(override=True)
-# MONGODB_URL=os.getenv('MONGO_URI')
-# OPENAI_KEY=os.getenv('OPENAI_KEY')
+os.environ["SSL_CERT_FILE"] = r"C:\Users\galuh\miniconda\envs\py10\Library\ssl\cacert.pem"
 
-# def prompt_init(question):
-#     PROMPT = f'''
-#     You are a scheduler assistant. Your main task is to help manage user's schedule.
-#     You will be given an instruction by the user to either add an event to the calendar or retrieve events from the calendar.
+mode = 'test'
 
-#     - If user asks to add an event, you need to respond with USER FORMAT:
-#         1. The event name
-#         2. The event date and time
-#         3. The event location
-#         4. The event description
-#         6. The event participants
+def init_llm(user_id, input, image_data_url=None, user_timezone=None):
+    try:
+        print(f"########### Timezone: {user_timezone}", flush=True)
+        user_latest_event_draft = None
+        latest_conversations = None
+
+        for memory in session_memories:
+            _, memory = get_user_memory(user_id)
+            if memory:
+                latest_draft = memory['latest_event_draft'] if memory['latest_event_draft'] else None
+                print(f"########### Latest draft: {latest_draft}", flush=True)
+                latest_draft_status = latest_draft['status'] if latest_draft else None
+                print(f"########### Latest draft status: {latest_draft_status}", flush=True)
+                user_latest_event_draft = latest_draft if latest_draft_status == 'draft' else None
+                print(f"########### User latest event draft: {user_latest_event_draft}", flush=True)
+                latest_conversations = memory['latest_conversations'] if memory['latest_conversations'] else None
+
+        prompt = prompt_init(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
+        print(f"########### Prompt: {prompt}", flush=True)
+
+        try:
+            client = OpenAI()
+            print("✅ OpenAI client initialized", flush=True)
+        except Exception as e:
+            print(f"❌ Error initializing OpenAI client: {e}", flush=True)
+            return "Sorry, I couldn't connect to the OpenAI service. Please try again later."
+
+        messages=[{
+                'role': 'user',
+                'content': [
+                    {
+                        "type": "text",
+                        "text": prompt
+                    }
+                ]
+            }]
+        
+        if image_data_url:
+            print(f"########### Entering with Image data URL: {image_data_url}", flush=True)
+            messages[0]['content'].append({
+                "type": "image_url",
+                "image_url": {"url": image_data_url}
+        })
+            
+        llm = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages,
+            temperature=0,
+            max_tokens=1000
+        )
+
+        print(f'####### full response: {llm}', flush=True)
+        response = llm.choices[0].message.content
+        return response
+    except Exception as e:
+        print(f"########### Error in LLM: {str(e)}", flush=True)
+        return "Sorry, I couldn't process your request. Please try again."
+
+def summarize_event(user_id, input, is_test=False, image_data_url=None):
+    cal_timezone = get_user_calendar_timezone(user_id, is_test)
+    user_timezone = check_timezone(user_id, cal_timezone)
+    raw_answer = init_llm(user_id, input, image_data_url, user_timezone)
+
+    print(f"########### Answer: {raw_answer}", flush=True)
+    answer = clean_instruction_block(raw_answer)
+
+    index, memory = get_user_memory(user_id)
+    if memory:
+        if len(memory['latest_conversations']) > max_chat_stored:
+            session_memories[index]['latest_conversations'].pop(0)
+
+        session_memories[index]['latest_conversations'].append({
+            "userMessage": input,
+            "aiMessage": answer,
+            "timestamp": datetime.now(tzn.utc)
+        })
+    else:
+        session_memories.append({
+            "user_id": user_id,
+            "latest_conversations": [{
+                "userMessage": input,
+                "aiMessage": answer,
+                "timestamp": datetime.now(tzn.utc)
+            }],
+            "latest_event_draft": {}
+        })
+
+    whatsappNum = f'whatsapp:+{user_id}'
+    if isinstance(answer, str) and 'add_event:' in answer.strip():
+        print(f"########### Adding event: {answer}", flush=True)
+        try:
+            send_whatsapp_message(f'{whatsappNum}', "Adding your event...")
+        except Exception as e:
+            print(f"########### Error sending loading message: {str(e)}", flush=True)
+        try:
+            new_event = save_event_to_calendar(answer, user_id, is_test)
+            return new_event
+        except Exception as e:
+            print(f"########### Error adding to g-cal: {str(e)}", flush=True)
+            return "Sorry, I couldn not add the event to your calendar."
+        
+    elif isinstance(answer, str) and 'draft_event:' in answer.strip():
+        print(f"########### Drafting event: {answer}", flush=True)
+        try:
+            send_whatsapp_message(f'{whatsappNum}', "Drafting...")
+        except Exception as e:
+            print(f"########### Error sending loading message: {str(e)}", flush=True)
+        try:
+            text_reply = save_event_to_draft(answer, user_id)
+            print(f"########### Replying event draft: {text_reply}", flush=True)
+            return text_reply
+        except Exception as e:
+            print(f"########### Error parsing event details: {str(e)}", flush=True)
+            return "Sorry, I couldn't understand the event details."
+        
+    elif isinstance(answer, str) and 'retrieve_event:' in answer.strip():
+        print(f"########### Retrieving events: {answer}", flush=True)
+        try:
+            send_whatsapp_message(f'{whatsappNum}', "Fetching your events...")
+        except Exception as e:
+            print(f"########### Error sending loading message: {str(e)}", flush=True)
+        try:
+            events = get_upcoming_events(answer, user_id, is_test)
+            print(f"########### All list of Events: {events}", flush=True)
+            user_events = transform_events_to_text(events, user_timezone)
+            return user_events
+        except Exception as e:
+            print(f"########### Error retrieving events: {str(e)}", flush=True)
+            return "Sorry, I am unable to fetch your events at the moment."
+
+    elif isinstance(answer, str) and 'timezone_set:' in answer.strip():
+        print(f"########### Setting timezone: {answer}", flush=True)
+        try:
+            new_timezone = answer.split('timezone_set: ')[1].strip()
+            updated_timezone = add_update_timezone(user_id, new_timezone)
+            if updated_timezone:
+                return f'Your timezone has been changed to {new_timezone}. Please proceed with your request.'
+            else:
+                return f'Failed to set your timezone. Please try again.'
+        except Exception as e:
+            print(f"########### Error updating timezone: {str(e)}", flush=True)
+            return "Sorry, I could not set your timezone. Please try again."
+        
+    elif isinstance(answer, str) and answer.strip().startswith("Event not added"):
+        print(f"########### Event not added: {answer}", flush=True)
+        return "Sorry, I'm unable to assist you with this event. Please start over with more details."
     
-#     Then ask the user to confirm the event details. If the user confirms, you will respond SYSTEM FORMAT:
-#         'add_event: {
-#             "name": event_name,
-#             "date": event_date,
-#             "location": event_location,
-#             "description": event_description,
-#             "participants": event_participants
-#         }'
-
-#     If the user doesn't confirm, you will ask user to specify the correct details, revise the event details, return the corrected USER FORMAT, and ask for confirmation again (repeat the process until user confirms).
-#     If after three revision attempts the user doesn't confirm, you will respond with "Event not added" and stop the process.
-
-#     - If user asks to retrieve events, you need to respond "Retrieve Events" of the today and tomorrow with format:
-#     'retrieve_event: today_date - tomorrow_date'
-    
-#     Question: {question}
-#     Answer:
-#     '''
-#     return PROMPT
-
-# def init_llm(prompt, question):
-#     prompt = prompt_init(question)
-#     openai.api_key = OPENAI_KEY
-#     llm = openai.chatCompletion.create(
-#         model="gpt-4-vision-preview",
-#         messages=[{
-#             'role': 'user',
-#             'content': [
-#                 {
-#                     "type": "text",
-#                     "text": prompt
-#                 },
-#                 {
-#                     "type": "image_url",
-#                     "text": question
-#                 }
-#             ]
-#         }],
-#         temperature=0
-#     )
-#     print(f'####### full response: {llm}')
-#     response = llm['choices'][0]['message']['content']
-#     return response
-
-# def summarize_event(prompt, question):
-#     instruction = init_llm(prompt, question)
-#     if 'add_event' in instruction:
-#         event_details = instruction.split('add_event: ')[1].split('}')[0] + '}'
-#         event_details = eval(event_details)
-#         event_name = event_details['name']
-#         event_date = event_details['date']
-#         event_location = event_details['location']
-#         event_description = event_details['description']
-#         event_participants = event_details['participants']
-#         return {
-#             'action': 'add_event',
-#             'event': {
-#                 'name': event_name,
-#                 'date': event_date,
-#                 'location': event_location,
-#                 'description': event_description,
-#                 'participants': event_participants
-#             }
-#         }
-#     elif 'retrieve_event' in instruction:
-#         start_date = instruction.split('retrieve_event: ')[1].split('-')[0].strip()
-#         end_date = instruction.split('retrieve_event: ')[1].split('-')[1].strip()
-#         return {
-#             'action': 'retrieve_event',
-#             'event': {
-#                 'start_date': start_date,
-#                 'end_date': end_date
-#             }
-#         }
-
-
+    else:
+        print(f"########### Instruction not recognized: {answer}", flush=True)
+        return answer
