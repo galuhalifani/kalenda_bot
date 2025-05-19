@@ -68,7 +68,7 @@ def get_voice_data_url(media_url, content_type, user_id):
 def transcribe_audio(voice_data_filename, client):
     print(f"########### Transcribing audio file: {voice_data_filename}", flush=True)
     with open(voice_data_filename, "rb") as audio_file:
-        transcript = client.audio.translations.create(
+        transcript = client.audio.transcriptions.create(
             model="whisper-1",
             file=audio_file,
             response_format="text"
