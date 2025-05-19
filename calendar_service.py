@@ -426,8 +426,8 @@ def save_event_to_calendar(instruction, user_id, is_test=False):
         print(f"########### Event created: {new_event.get('htmlLink')}", flush=True)
 
         confirm_event_draft(user_id)
+        full_link = new_event.get('htmlLink')
         if is_test:
-            full_link = new_event.get('htmlLink')
             new_event_link = full_link.split('eid=')[1]
         else:
             new_event_link = full_link
