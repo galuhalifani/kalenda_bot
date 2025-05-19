@@ -59,7 +59,8 @@ def get_voice_data_url(media_url, content_type, user_id):
     if not response.headers["Content-Type"].startswith("audio/"):
         print("❌ Response Content-Type not audio:", response.headers["Content-Type"])
         return "Invalid audio file."
-    filename = f"{user_id}_{uuid.uuid4().hex}.{content_type.split("/")[-1]}"  # e.g., input.ogg, input.m4a
+    contentType = content_type.split("/")[-1]
+    filename = f"{user_id}_{uuid.uuid4().hex}.{contentType}"  # e.g., input.ogg, input.m4a
     with open(filename, "wb") as f:
         f.write(response.content)
     return filename
