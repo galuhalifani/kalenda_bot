@@ -68,12 +68,13 @@ def get_voice_data_url(media_url, content_type, user_id):
 def transcribe_audio(voice_data_filename, client):
     print(f"########### Transcribing audio file: {voice_data_filename}", flush=True)
     with open(voice_data_filename, "rb") as audio_file:
-        transcript = client.audio.transcriptions.create(
+        transcript = client.audio.translations.create(
             model="whisper-1",
             file=audio_file,
             response_format="text"
         )
 
+    print(f"########### Transcription result: {transcript}", flush=True)
     return transcript
     
 def split_message(text, max_length=1530):
