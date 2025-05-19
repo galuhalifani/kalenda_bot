@@ -86,9 +86,13 @@ def receive_whatsapp():
         user_id = extract_phone_number(record_user_id)
         media_url = request.form.get("MediaUrl0")
         content_type = request.form.get("MediaContentType0") 
+        is_audio = False
+        is_image = False
 
-        is_audio = bool(media_url) and content_type.startswith("audio/")
-        is_image = bool(media_url) and content_type.startswith("image/")
+        if content_type:
+            is_audio = bool(media_url) and content_type.startswith("audio/")
+            is_image = bool(media_url) and content_type.startswith("image/")
+            
         resp = MessagingResponse()
         is_test = False
         
