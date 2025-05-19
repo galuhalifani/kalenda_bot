@@ -35,6 +35,7 @@ if mode == 'test':
     os.environ["SSL_CERT_FILE"] = r"C:\Users\galuh\miniconda\envs\py10\Library\ssl\cacert.pem"
 
 def init_llm(user_id, input, image_data_url=None, user_timezone=None):
+    print(f"############ Initialized with {mode} mode", flush=True)
     try:
         print(f"########### Timezone: {user_timezone}", flush=True)
         user_latest_event_draft = None
