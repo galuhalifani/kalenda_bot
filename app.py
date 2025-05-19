@@ -10,7 +10,7 @@ from creds import *
 from model import summarize_event, mode
 from helpers import extract_emails, extract_phone_number, get_image_data_url, send_whatsapp_message, get_voice_data_url
 from auth import verify_auth_token_link, verify_oauth_connection, save_token, get_credentials, generate_auth_link
-from database import check_user, check_user_balance, deduct_chat_balance, use_test_account, check_user_active_email, update_user_whitelist_status, update_send_whitelisted_message_status, add_user_whitelist_status
+from database import check_user, check_user_balance, deduct_chat_balance, use_test_account, check_user_active_email, update_user_whitelist_status, update_send_whitelisted_message_status, add_user_whitelist_status, update_send_test_calendar_message
 from text import greeting, using_test_calendar
 from session_memory import delete_user_memory, add_user_memory
 import secrets
@@ -173,7 +173,7 @@ def receive_whatsapp():
                 oauth_connection_verification = verify_oauth_connection(user_id)
                 print(f"########### Verified OAuth connection: {user_id}, {oauth_connection_verification}", flush=True)
                 if oauth_connection_verification == False:
-                    resp.message(using_test_calendar)
+                    update_send_test_calendar_message(resp, using_test_calendar, user_id)
         except Exception as e:
             resp.message("Error during authentication. Please try again.")
             print(f"########### ERROR in authentication: {e}", flush=True)

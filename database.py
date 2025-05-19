@@ -205,3 +205,36 @@ def update_send_whitelisted_message_status(email):
         upsert=True
     )
     return user_number
+
+def send_test_calendar_message(resp, using_test_calendar, user_id):
+    resp.message(using_test_calendar)
+    user_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"test_calendar_message": True}},
+        upsert=True
+    )
+
+def update_send_test_calendar_message(resp, using_test_calendar, user_id):
+    user = user_collection.find_one({"user_id": user_id})
+    test_calendar_message = user.get("test_calendar_message", False)
+
+    if not user or not test_calendar_message:
+        sending = send_test_calendar_message(resp, using_test_calendar, user_id)
+        return sending
+    else:
+        if test_calendar_message:
+            last_chat = user.get("last_chat", datetime.now(tzn.utc))
+
+            if last_chat.tzinfo is None:
+                last_chat = last_chat.replace(tzinfo=tzn.utc)
+
+            time_since_last_chat = last_chat - datetime.now(tzn.utc)
+            print(f'########## time_since_last_chat: {time_since_last_chat}')
+
+        if time_since_last_chat > timedelta(days=1) :
+            # allow to send again
+            print("########## resending test calendar message")
+            user_collection.update_one({"user_id": user_id}, {"$set": {"test_calendar_message": False}})
+            return False
+
+    return test_calendar_message
