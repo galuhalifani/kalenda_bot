@@ -71,13 +71,18 @@ def convert_timezone(time_str, target_tz='Asia/Jakarta'):
 
 def send_whatsapp_message(to, message):
     print(f"########### Sending WhatsApp message from: {TWILIO_PHONE_NUMBER_SANDBOX} to {to}: {message}", flush=True)
-    client = TwilioClient(TWILIO_SID, TWILIO_AUTH_TOKEN)
-    client.messages.create(
-        from_=TWILIO_PHONE_NUMBER_SANDBOX,
-        to=to,
-        body=message
-    )
-    time.sleep(0.5)
+    try: 
+        client = TwilioClient(TWILIO_SID, TWILIO_AUTH_TOKEN)
+        client.messages.create(
+            from_=TWILIO_PHONE_NUMBER_SANDBOX,
+            to=to,
+            body=message
+        )
+        print(f"########### WhatsApp message sent successfully", flush=True)
+        time.sleep(0.5)
+    except Exception as e:
+        print(f"########### Error sending WhatsApp message: {e}", flush=True)
+        raise Exception("Error sending WhatsApp message")
 
 EMAIL_REGEX = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
 
