@@ -17,9 +17,11 @@ if client:
     db = client['kalenda']
     user_collection = db['user']
     tokens_collection = db['tokens']
+    email_collection = db['email']
 else:
     user_collection = None
     tokens_collection = None
+    email_collection = None
 
 def check_user(user_id):
     print(f"########### Checking user: {user_id}", flush=True)
@@ -132,3 +134,74 @@ def use_test_account(user_id):
             "is_using_test_account": True
         }},
     upsert=True)
+
+def check_user_active_email(user_id, user_email=None):
+    print(f"########### Checking if user is whitelisted: {user_id}", flush=True)
+    user = user_collection.find_one({"user_id": user_id})
+
+    if user:
+        db_email = user.get("email", None)
+        is_email_whitelisted = user.get("is_email_whitelisted", False)
+
+        if db_email == None:
+            print(f"########## User {user_id} has no whitelisted email in database", flush=True)
+            return False
+        else:   
+            if user_email == None:     
+                if is_email_whitelisted == True:
+                    print(f"########### User has email in database: {db_email}", flush=True)
+                    return True
+                else:
+                    return False
+            else:
+                user_and_email = bool(bool(user_email == db_email) and is_email_whitelisted)
+                if user_and_email:
+                    return True # email is already whitelisted
+        
+    return False
+
+def add_user_whitelist_status(user_id, email):
+    try:
+        print(f"########### Adding user whitelist status: email: {email}", flush=True)
+        email_collection.update_one(
+            {"email": email},
+            {"$set": {"is_whitelisted": "Pending"}},
+            upsert=True
+        )
+        user_collection.update_one(
+            {"user_id": user_id},
+            {"$set": {"email": email, "is_email_whitelisted": "Pending"}},
+            upsert=True
+        )
+        return True
+    except Exception as e:
+        print(f"Error updating whitelist status for {email}: {e}", flush=True)
+        return False
+    
+def update_user_whitelist_status(email, status):
+    try:
+        print(f"########### Updating user whitelist status: {email}, status: {status}", flush=True)
+        email_collection.update_one(
+            {"email": email},
+            {"$set": {"is_whitelisted": status}},
+            upsert=True
+        )
+        user_collection.update_one(
+            {"email": email},
+            {"$set": {"is_email_whitelisted": status}},
+            upsert=True
+        )
+        return True
+    except Exception as e:
+        print(f"Error updating whitelist status for {email}: {e}", flush=True)
+        return False
+
+def update_send_whitelisted_message_status(email):
+    user = user_collection.find_one({"email": email})
+    user_number = user.get("user_id")
+    user_collection.update_one(
+        {"user_id": user_number},
+        {"$set": {"whitelisted_message_sent": True}},
+        upsert=True
+    )
+    return user_number

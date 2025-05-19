@@ -109,4 +109,15 @@ EMAIL_REGEX = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
 def all_valid_emails(email_list):
     print(f"########### Checking email validity: {email_list}", flush=True)
     return all(EMAIL_REGEX.match(email) for email in email_list)
-    
+
+def extract_emails(args):
+    cleaned = args[1].strip()
+    if cleaned:
+        match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', cleaned)
+        if match:
+            user_email = match.group(0)
+            print(f"########### User email: {user_email}", flush=True)
+            return user_email
+        else:
+            print("########### No email found in the text", flush=True)
+            return None

@@ -8,9 +8,9 @@ from google_auth_oauthlib.flow import Flow
 from twilio.twiml.messaging_response import MessagingResponse
 from creds import *
 from model import summarize_event, mode
-from helpers import extract_phone_number, get_image_data_url, send_whatsapp_message, get_voice_data_url
+from helpers import extract_emails, extract_phone_number, get_image_data_url, send_whatsapp_message, get_voice_data_url
 from auth import verify_auth_token_link, verify_oauth_connection, save_token, get_credentials, generate_auth_link
-from database import check_user, check_user_balance, deduct_chat_balance, use_test_account
+from database import check_user, check_user_balance, deduct_chat_balance, use_test_account, check_user_active_email, update_user_whitelist_status, update_send_whitelisted_message_status, add_user_whitelist_status
 from text import greeting, using_test_calendar
 from session_memory import delete_user_memory, add_user_memory
 import secrets
@@ -108,15 +108,60 @@ def receive_whatsapp():
             print(f"########### ERROR initial checkings: {e}", flush=True)
 
         try:
-            if incoming_msg == "authenticate":
-                auth_link = generate_auth_link(user_id)
-                resp.message(f"🔐 Click to connect your Google Calendar:\n{auth_link}")
-                return str(resp)
+            if incoming_msg.startswith("authenticate"):
+                authenticate_args = incoming_msg.split("authenticate")
+                
+                if len(authenticate_args) > 1: # if authenticate <email>
+                    user_email = extract_emails(authenticate_args)
+                    if user_email:
+                        try:
+                            is_whitelisted = check_user_active_email(user_id, user_email)
+                            if not is_whitelisted:
+                                add_user_whitelist_status(user_id, user_email)
+                                send_whatsapp_message(ADMIN_NUMBER, "New user request for whitelisting: " + user_email)
+                                resp.message("✅ Your email has been added to the whitelist. You will receive a confirmation message once it's approved.")
+                                return str(resp)
+                            else:
+                                resp.message(f"❌ This email is already whitelisted. Click to connect your Google Calendar:\n\n{auth_link}")
+                                return str(resp)
+                        except Exception as e:
+                            print(f"########### Error adding user whitelist status: {e}", flush=True)
+                            resp.message("❌ Error adding your email to the whitelist. Please try again.")
+                            send_whatsapp_message(ADMIN_NUMBER, {user_id, user_email, incoming_msg, e})
+                            return str(resp)
+
+                # if just authenticate
+                has_active_email = check_user_active_email(user_id)
+                if has_active_email == True:
+                    auth_link = generate_auth_link(user_id)
+                    resp.message(f"🔐 Click to connect your Google Calendar:\n{auth_link}\n\n. You can only connect to calendar under your e-mail that has been whitelisted. To connect to another calendar, type 'authenticate <email-address>'")
+                    return str(resp)
+                elif has_active_email == False:
+                    resp.message("❌ Your email is not yet whitelisted. Please type 'authenticate <your-google-calendar-email>' to whitelist your email")
+                    return str(resp)
+                else:
+                    resp.message("Your email is pending for whitelisting. We will get back to you in 24h or less. For any questions, reach out to admin at galuh.adika@gmail.com.")
+                    return str(resp)
+
             elif incoming_msg == "authenticate test":
                 is_test = True
                 use_test_account(user_id)
                 resp.message(using_test_calendar)
                 return str(resp)
+            
+            elif incoming_msg.startswith(WHITELIST_KEYWORD):
+                email = incoming_msg.split(" ")[1]
+                user_number = update_user_whitelist_status(email, True)
+                if user_number:
+                    try:
+                        whatsapp_number = f"whatsapp:{user_number}"
+                        auth_link = generate_auth_link(user_number)
+                        instruction_text = f"✅ Your email {email} has been whitelisted. You can now connect your Google Calendar.\n\nClick to connect your Google Calendar:\n{auth_link}"
+                        send_whatsapp_message(whatsapp_number, instruction_text)
+                        update_send_whitelisted_message_status(email)
+                    except Exception as e:
+                        print(f"########### Error sending whitelisted success message: {str(e)}", flush=True)                    
+
             else:
                 oauth_connection_verification = verify_oauth_connection(user_id)
                 print(f"########### Verified OAuth connection: {user_id}, {oauth_connection_verification}", flush=True)
