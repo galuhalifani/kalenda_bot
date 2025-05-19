@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
 from twilio.rest import Client
+from twilio.twiml.messaging_response import MessagingResponse
 import os.path
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -30,9 +31,8 @@ from calendar_service import get_user_calendar_timezone, get_calendar_service, s
 from session_memory import session_memories, get_user_memory, max_chat_stored
 from prompt import prompt_init
 
-os.environ["SSL_CERT_FILE"] = r"C:\Users\galuh\miniconda\envs\py10\Library\ssl\cacert.pem"
-
-mode = 'test'
+if mode == 'test':
+    os.environ["SSL_CERT_FILE"] = r"C:\Users\galuh\miniconda\envs\py10\Library\ssl\cacert.pem"
 
 def init_llm(user_id, input, image_data_url=None, user_timezone=None):
     try:
@@ -92,7 +92,7 @@ def init_llm(user_id, input, image_data_url=None, user_timezone=None):
         print(f"########### Error in LLM: {str(e)}", flush=True)
         return "Sorry, I couldn't process your request. Please try again."
 
-def summarize_event(user_id, input, is_test=False, image_data_url=None):
+def summarize_event(resp, user_id, input, is_test=False, image_data_url=None):
     cal_timezone = get_user_calendar_timezone(user_id, is_test)
     user_timezone = check_timezone(user_id, cal_timezone)
     raw_answer = init_llm(user_id, input, image_data_url, user_timezone)
@@ -100,32 +100,13 @@ def summarize_event(user_id, input, is_test=False, image_data_url=None):
     print(f"########### Answer: {raw_answer}", flush=True)
     answer = clean_instruction_block(raw_answer)
 
-    index, memory = get_user_memory(user_id)
-    if memory:
-        if len(memory['latest_conversations']) > max_chat_stored:
-            session_memories[index]['latest_conversations'].pop(0)
-
-        session_memories[index]['latest_conversations'].append({
-            "userMessage": input,
-            "aiMessage": answer,
-            "timestamp": datetime.now(tzn.utc)
-        })
-    else:
-        session_memories.append({
-            "user_id": user_id,
-            "latest_conversations": [{
-                "userMessage": input,
-                "aiMessage": answer,
-                "timestamp": datetime.now(tzn.utc)
-            }],
-            "latest_event_draft": {}
-        })
-
     whatsappNum = f'whatsapp:+{user_id}'
     if isinstance(answer, str) and 'add_event:' in answer.strip():
         print(f"########### Adding event: {answer}", flush=True)
         try:
-            send_whatsapp_message(f'{whatsappNum}', "Adding your event...")
+            loading_message = "Adding your event..."
+            # resp.message(loading_message)
+            send_whatsapp_message(f'{whatsappNum}', loading_message)
         except Exception as e:
             print(f"########### Error sending loading message: {str(e)}", flush=True)
         try:
@@ -138,7 +119,9 @@ def summarize_event(user_id, input, is_test=False, image_data_url=None):
     elif isinstance(answer, str) and 'draft_event:' in answer.strip():
         print(f"########### Drafting event: {answer}", flush=True)
         try:
-            send_whatsapp_message(f'{whatsappNum}', "Drafting...")
+            loading_message = "Drafting..."
+            # resp.message(loading_message)
+            send_whatsapp_message(f'{whatsappNum}', loading_message)
         except Exception as e:
             print(f"########### Error sending loading message: {str(e)}", flush=True)
         try:
@@ -152,7 +135,9 @@ def summarize_event(user_id, input, is_test=False, image_data_url=None):
     elif isinstance(answer, str) and 'retrieve_event:' in answer.strip():
         print(f"########### Retrieving events: {answer}", flush=True)
         try:
-            send_whatsapp_message(f'{whatsappNum}', "Fetching your events...")
+            loading_message = "Fetching your events..."
+            # resp.message(loading_message)
+            send_whatsapp_message(f'{whatsappNum}', loading_message)
         except Exception as e:
             print(f"########### Error sending loading message: {str(e)}", flush=True)
         try:

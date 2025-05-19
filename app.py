@@ -8,11 +8,11 @@ from google_auth_oauthlib.flow import Flow
 from twilio.twiml.messaging_response import MessagingResponse
 from creds import *
 from model import summarize_event, mode
-from helpers import extract_phone_number, get_image_data_url
+from helpers import extract_phone_number, get_image_data_url, send_whatsapp_message
 from auth import verify_auth_token_link, verify_oauth_connection, save_token, get_credentials, generate_auth_link
 from database import check_user, check_user_balance, deduct_chat_balance, use_test_account
 from text import greeting, using_test_calendar
-from session_memory import delete_user_memory
+from session_memory import delete_user_memory, add_user_memory
 import secrets
 from flask import request
 
@@ -129,48 +129,35 @@ def receive_whatsapp():
         
         print(f"########### Starting process: {incoming_msg}, {user_id}, image: {image_data_url}", flush=True)
 
-        try:
-            delete_user_memory(user_id)
-        except Exception as e:
-            print(f"########### ERROR deleting memory: {e}", flush=True)
+        delete_user_memory(user_id)
 
-        reply_text = summarize_event(user_id, incoming_msg, is_test, image_data_url)
+        reply_text = summarize_event(resp, user_id, incoming_msg, is_test, image_data_url)
         if not isinstance(reply_text, str):
             reply_text = str(reply_text)  # or a fallback message
         
+        is_too_long = len(reply_text) > 1400
+
+        if is_too_long:
+            max_length=1400
+            split = [reply_text[i:i+max_length] for i in range(0, len(reply_text), max_length)]
+            trimmed_reply = split[0]
+            reply_text = f"Your list is too long, I can only show partial results. For more complete list, please specify a shorter date range.\n\n {trimmed_reply}"
+            send_whatsapp_message(record_user_id, reply_text)
+            print(f"########### trimmed REPLY: {trimmed_reply}", flush=True)
+        else:
+            print(f"########### REPLY: {reply_text}", flush=True)
+            send_whatsapp_message(record_user_id, reply_text)
+            print(f"########### REPLY sent: {reply_text}", flush=True)
+
+        print(f"########### End process {user_id}", flush=True)
+
         try:
-            is_too_long = len(reply_text) > 1400
-            if is_too_long:
-                max_length=1400
-                split = [reply_text[i:i+max_length] for i in range(0, len(reply_text), max_length)]
-                trimmed_reply = split[0]
-                print(f"########### trimmed REPLY: {trimmed_reply}", flush=True)
-                resp.message(f"Your list is too long, I can only show partial results. For more complete list, please specify a shorter date range.\n\n")
-                resp.message(f"{trimmed_reply}")
-                deduct_chat_balance(user['user_details'], user_id)
-                return str(resp)
-            else:
-                print(f"########### REPLY: {reply_text}", flush=True)
-                try:
-                    resp.message(reply_text)
-                    print(f"########### REPLY sent: {reply_text}", flush=True)
-                    deduct_chat_balance(user['user_details'], user_id)
-                    return str(resp)
-                except Exception as e:
-                    print(f"########### ERROR sending final message: {e}", flush=True)
-                    resp.message("Sorry, I couldn't send final message.")
+            deduct_chat_balance(user['user_details'], user_id)
+            print(f"########### Balance deducted", flush=True)
         except Exception as e:
-            print(f"❌ Error sending message to WhatsApp: {str(e)}", flush=True)
-            resp.message("Sorry, I couldn't send the message.")
+            print(f"####### Error deducting chat balance: {str(e)}")
 
-        print(f"########### Reply length: {len(reply_text)}", flush=True)
-        print(f"########### End process {user_id}, input: {incoming_msg}, image: {True if image_data_url else False}", flush=True)
-
-        # try:
-        #     deduct_chat_balance(user['user_details'], user_id)
-        # except Exception as e:
-        #     print(f"Error deducting chat balance: {str(e)}")
-        # print(f"########### Balance deducted", flush=True)
+        add_user_memory(user_id, incoming_msg, reply_text)
 
         return str(resp)
     except Exception as e:

@@ -73,7 +73,7 @@ def send_whatsapp_message(to, message):
     print(f"########### Sending WhatsApp message from: {TWILIO_PHONE_NUMBER_SANDBOX} to {to}: {message}", flush=True)
     client = TwilioClient(TWILIO_SID, TWILIO_AUTH_TOKEN)
     client.messages.create(
-        from_=TWILIO_PHONE_NUMBER_SANDBOX,  # your Twilio number
+        from_=TWILIO_PHONE_NUMBER_SANDBOX,
         to=to,
         body=message
     )

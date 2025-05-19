@@ -273,9 +273,10 @@ def update_event_draft(user_id, new_draft):
 def save_event_to_draft(instruction, user_id):
     print(f"########### save_event_to_draft: {instruction}", flush=True)
     json_str = instruction.split('draft_event:')[1].strip()
+    print(f"########### details to be parsed: {json_str}", flush=True)
     event_details = json.loads(json_str)
 
-    print(f"########### save_event_to_draft Event details: {event_details}", flush=True)
+    print(f"########### JSON parsed Event details: {event_details}", flush=True)
 
     start_date = readable_date(event_details['start_date'], True)
     end_date = readable_date(event_details['end_date'], True)
