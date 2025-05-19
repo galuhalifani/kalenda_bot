@@ -101,7 +101,7 @@ def receive_whatsapp():
             if (user['status'] == 'new'):
                 print(f"########### Send initial greetings: {user_id}")
                 try:
-                    send_whatsapp_message(user_id, greeting)
+                    send_whatsapp_message(record_user_id, greeting)
                 except Exception as e:
                     print(f"########### ERROR sending greeting: {e}", flush=True)
 
