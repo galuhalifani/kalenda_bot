@@ -92,7 +92,7 @@ def receive_whatsapp():
         if content_type:
             is_audio = bool(media_url) and content_type.startswith("audio/")
             is_image = bool(media_url) and content_type.startswith("image/")
-            
+
         resp = MessagingResponse()
         is_test = False
         
@@ -100,7 +100,10 @@ def receive_whatsapp():
             user = check_user(user_id)
             if (user['status'] == 'new'):
                 print(f"########### Send initial greetings: {user_id}")
-                resp.message(greeting)
+                try:
+                    send_whatsapp_message(user_id, greeting)
+                except Exception as e:
+                    print(f"########### ERROR sending greeting: {e}", flush=True)
 
             is_balance_available = check_user_balance(user)
 
