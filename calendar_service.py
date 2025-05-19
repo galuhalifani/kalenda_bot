@@ -72,6 +72,7 @@ def get_calendar_service(user_id, is_test=False):
             )
         
     service = build('calendar', 'v3', credentials=creds)
+    print("########### Calendar service initialized {service}", flush=True)
     return service
     
 def get_user_calendar_timezone(user_id, is_test=False):
@@ -415,10 +416,12 @@ def save_event_to_calendar(instruction, user_id, is_test=False):
         else:
             new_event = service.events().insert(calendarId=calendar_id, body=event).execute()
 
+        print(f"########### Event created: {new_event.get('htmlLink')}", flush=True)
+
         confirm_event_draft(user_id)
         return f"Event {new_event.get('summary', '')} created: {new_event.get('htmlLink')}"
     except Exception as e:
-        print(f"########### Error adding to g-cal: {str(e)}")
+        print(f"########### Error adding to g-cal: {e}")
         return None
     
 

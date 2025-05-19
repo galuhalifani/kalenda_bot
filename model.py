@@ -118,6 +118,7 @@ def summarize_event(resp, user_id, input, is_test=False, image_data_url=None, vo
             send_whatsapp_message(f'{whatsappNum}', loading_message)
         except Exception as e:
             print(f"########### Error sending loading message: {str(e)}", flush=True)
+
         try:
             new_event = save_event_to_calendar(answer, user_id, is_test)
             return new_event
