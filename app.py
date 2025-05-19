@@ -8,7 +8,7 @@ from google_auth_oauthlib.flow import Flow
 from twilio.twiml.messaging_response import MessagingResponse
 from creds import *
 from model import summarize_event, mode
-from helpers import extract_phone_number, get_image_data_url, send_whatsapp_message
+from helpers import extract_phone_number, get_image_data_url, send_whatsapp_message, get_voice_data_url
 from auth import verify_auth_token_link, verify_oauth_connection, save_token, get_credentials, generate_auth_link
 from database import check_user, check_user_balance, deduct_chat_balance, use_test_account
 from text import greeting, using_test_calendar
@@ -87,6 +87,8 @@ def receive_whatsapp():
         media_url = request.form.get("MediaUrl0")
         content_type = request.form.get("MediaContentType0") 
 
+        is_audio = bool(media_url) and content_type.startswith("audio/")
+        is_image = bool(media_url) and content_type.startswith("image/")
         resp = MessagingResponse()
         is_test = False
         
@@ -125,13 +127,14 @@ def receive_whatsapp():
             print(f"########### ERROR in authentication: {e}", flush=True)
             return str(resp)
     
-        image_data_url = get_image_data_url(media_url, content_type) if media_url else None
-        
-        print(f"########### Starting process: {incoming_msg}, {user_id}, image: {image_data_url}", flush=True)
+        image_data_url = get_image_data_url(media_url, content_type) if is_image else None
+        voice_data_filename = get_voice_data_url(media_url, content_type, user_id) if is_audio else None
+
+        print(f"########### Starting process: {incoming_msg}, {user_id}, image: {image_data_url}, voice: {voice_data_filename}", flush=True)
 
         delete_user_memory(user_id)
 
-        reply_text = summarize_event(resp, user_id, incoming_msg, is_test, image_data_url)
+        reply_text = summarize_event(resp, user_id, incoming_msg, is_test, image_data_url, voice_data_filename)
         if not isinstance(reply_text, str):
             reply_text = str(reply_text)  # or a fallback message
         

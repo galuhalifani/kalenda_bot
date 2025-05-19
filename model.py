@@ -26,7 +26,7 @@ import re
 from creds import *
 from database import user_collection, tokens_collection, check_user, check_timezone, add_update_timezone, deduct_chat_balance, check_user_balance
 from auth import decrypt_token, encrypt_token, save_token
-from helpers import clean_instruction_block, readable_date, clean_description, extract_phone_number, get_image_data_url, split_message,send_whatsapp_message
+from helpers import clean_instruction_block, readable_date, clean_description, extract_phone_number, get_image_data_url, split_message,send_whatsapp_message, transcribe_audio
 from calendar_service import get_user_calendar_timezone, get_calendar_service, save_event_to_draft, save_event_to_calendar, get_upcoming_events, update_event_draft, transform_events_to_text
 from session_memory import session_memories, get_user_memory, max_chat_stored
 from prompt import prompt_init
@@ -34,7 +34,7 @@ from prompt import prompt_init
 if mode == 'test':
     os.environ["SSL_CERT_FILE"] = r"C:\Users\galuh\miniconda\envs\py10\Library\ssl\cacert.pem"
 
-def init_llm(user_id, input, image_data_url=None, user_timezone=None):
+def init_llm(user_id, input, image_data_url=None, user_timezone=None, voice_data_filename=None):
     print(f"############ Initialized with {mode} mode", flush=True)
     try:
         print(f"########### Timezone: {user_timezone}", flush=True)
@@ -52,15 +52,23 @@ def init_llm(user_id, input, image_data_url=None, user_timezone=None):
                 print(f"########### User latest event draft: {user_latest_event_draft}", flush=True)
                 latest_conversations = memory['latest_conversations'] if memory['latest_conversations'] else None
 
-        prompt = prompt_init(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
-        print(f"########### Prompt: {prompt}", flush=True)
-
         try:
             client = OpenAI()
             print("✅ OpenAI client initialized", flush=True)
         except Exception as e:
             print(f"❌ Error initializing OpenAI client: {e}", flush=True)
             return "Sorry, I couldn't connect to the OpenAI service. Please try again later."
+        
+        if voice_data_filename:
+            try:
+                print(f"########### Entering with Voice data filename: {voice_data_filename}", flush=True)
+                transcription = transcribe_audio(voice_data_filename, client)
+                input = transcription
+            except Exception as e:
+                print(f"########### Error transcribing audio: {str(e)}", flush=True)
+
+        prompt = prompt_init(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
+        print(f"########### Prompt: {prompt}", flush=True)
 
         messages=[{
                 'role': 'user',
@@ -93,10 +101,10 @@ def init_llm(user_id, input, image_data_url=None, user_timezone=None):
         print(f"########### Error in LLM: {str(e)}", flush=True)
         return "Sorry, I couldn't process your request. Please try again."
 
-def summarize_event(resp, user_id, input, is_test=False, image_data_url=None):
+def summarize_event(resp, user_id, input, is_test=False, image_data_url=None, voice_data_filename=None):
     cal_timezone = get_user_calendar_timezone(user_id, is_test)
     user_timezone = check_timezone(user_id, cal_timezone)
-    raw_answer = init_llm(user_id, input, image_data_url, user_timezone)
+    raw_answer = init_llm(user_id, input, image_data_url, user_timezone, voice_data_filename)
 
     print(f"########### Answer: {raw_answer}", flush=True)
     answer = clean_instruction_block(raw_answer)

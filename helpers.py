@@ -8,6 +8,7 @@ from creds import *
 import pytz
 from twilio.rest import Client as TwilioClient
 import time
+import uuid
 
 def clean_instruction_block(instruction):
     # remove backticks and "```json" if present
@@ -41,23 +42,41 @@ def extract_phone_number(user_id):
     
 def get_image_data_url(media_url, content_type):
     try:
+        allowed_types = {"image/png", "image/jpeg", "image/gif", "image/webp"}
+        if content_type not in allowed_types:
+            print(f"❌ Unsupported image type: {content_type}")
+            return "Only PNG, JPEG, GIF, or WEBP image formats are supported."
+        
         response = requests.get(media_url, auth=HTTPBasicAuth(TWILIO_SID, TWILIO_AUTH_TOKEN))
         image_data = base64.b64encode(response.content).decode('utf-8')
         image_data_url = f"data:{content_type};base64,{image_data}"
         return image_data_url
     except Exception as e:
-        raise Exception("Error fetching media: {e}")
+        raise Exception(f"Error fetching media: {e}")
+
+def get_voice_data_url(media_url, content_type, user_id):
+    response = requests.get(media_url, auth=HTTPBasicAuth(TWILIO_SID, TWILIO_AUTH_TOKEN))
+    if not response.headers["Content-Type"].startswith("audio/"):
+        print("❌ Response Content-Type not audio:", response.headers["Content-Type"])
+        return "Invalid audio file."
+    filename = f"{user_id}_{uuid.uuid4().hex}.{content_type.split("/")[-1]}"  # e.g., input.ogg, input.m4a
+    with open(filename, "wb") as f:
+        f.write(response.content)
+    return filename
+
+def transcribe_audio(voice_data_filename, client):
+    print(f"########### Transcribing audio file: {voice_data_filename}", flush=True)
+    with open(voice_data_filename, "rb") as audio_file:
+        transcript = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_file,
+            response_format="text"
+        )
+
+    return transcript
     
 def split_message(text, max_length=1530):
     return [text[i:i+max_length] for i in range(0, len(text), max_length)]
-
-# def get_timezone_from_phone(phone_number):
-#     try:
-#         parsed = phonenumbers.parse(phone_number)
-#         timezones = timezone.time_zones_for_number(parsed)
-#         return timezones  # This returns a list, e.g., ['Asia/Jakarta']
-#     except:
-#         return None
     
 def convert_timezone(time_str, target_tz='Asia/Jakarta'):
     try:
