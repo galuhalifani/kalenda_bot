@@ -346,6 +346,8 @@ def save_event_to_calendar(instruction, user_id, is_test=False):
         print(f"####### Failed to parse event JSON: {e}")
         return "Sorry, I couldn't understand your event details."
 
+    print(f"########### Event details: {event_details}", flush=True)
+
     name = event_details['name']
     start_date_str = event_details['start_date']
     end_date_str = event_details['end_date']
@@ -362,7 +364,7 @@ def save_event_to_calendar(instruction, user_id, is_test=False):
 
     sendUpdates = 'all' if (sendUpdates or sendUpdates == 'true') else 'none'
 
-    print('CALENDAR NAME: ', calendar_name)
+    print('CALENDAR NAME????????: ', calendar_name)
     if calendar_name != 'primary':
         calendars = list_calendars(service)
         calendar_id = None
@@ -412,9 +414,15 @@ def save_event_to_calendar(instruction, user_id, is_test=False):
     print(f"########### FINAL event details: {event}", flush=True)
     try:
         if sendUpdates == 'all':
-            new_event = service.events().insert(calendarId=calendar_id, body=event, sendUpdates=sendUpdates).execute()
+            try:
+                new_event = service.events().insert(calendarId=calendar_id, body=event, sendUpdates=sendUpdates).execute()
+            except Exception as e:
+                print(f"########### Error CALENDARRRRRRRRRRRRRRRRRRRRRRRR: {e}", flush=True)
         else:
-            new_event = service.events().insert(calendarId=calendar_id, body=event).execute()
+            try:
+                new_event = service.events().insert(calendarId=calendar_id, body=event).execute()
+            except Exception as e:
+                print(f"########### Error CALENDARRRRRRRRRRR LAGIIIIIIIIII, {e}", flush=True)
 
         print(f"########### Event created: {new_event.get('htmlLink')}", flush=True)
 

@@ -121,10 +121,11 @@ def summarize_event(resp, user_id, input, is_test=False, image_data_url=None, vo
 
         try:
             new_event = save_event_to_calendar(answer, user_id, is_test)
+            print(f"########### Replying event: {new_event}", flush=True)
             return new_event
         except Exception as e:
-            print(f"########### Error adding to g-cal: {str(e)}", flush=True)
-            return "Sorry, I couldn not add the event to your calendar."
+            print(f"########### Error adding new event: {e}", flush=True)
+            return "Sorry, I could not add the event to your calendar."
         
     elif isinstance(answer, str) and 'draft_event:' in answer.strip():
         print(f"########### Drafting event: {answer}", flush=True)
