@@ -29,51 +29,55 @@ from helpers import readable_date, convert_timezone, all_valid_emails
 from session_memory import latest_event_draft, get_user_memory, session_memories
 
 def get_calendar_service(user_id, is_test=False):
-    user_account = user_collection.find_one({"user_id": user_id})
+    try:
+        user_account = user_collection.find_one({"user_id": user_id})
 
-    is_using_test_account = user_account.get("is_using_test_account", True) or is_test
-    
-    userId = user_id if not is_using_test_account else "test_shared_calendar"
-    user_token = tokens_collection.find_one({"user_id": userId})
-
-    if not user_token:
-        message = "User not authenticated. Type 'authenticate' to connect to your Google Calendar, or type 'authenticate test' to use joint testing calendar."
-        raise Exception(message)
-    
-    access_token = user_token.get("access_token")
-    refresh_token = user_token.get("refresh_token")
-
-    creds = Credentials(
-        token=decrypt_token(access_token),
-        refresh_token=decrypt_token(refresh_token),
-        token_uri=TOKEN_URI,
-        client_id=TEST_CLIENT_ID if is_using_test_account else CLIENT_ID,
-        client_secret=TEST_CLIENT_SECRET if is_using_test_account else CLIENT_SECRET,
-        scopes=SCOPES
-    )
-    print("########### creds: ", creds, flush=True)
-
-    is_creds_expired = creds.expired and creds.refresh_token
-    if is_creds_expired:
-        if is_using_test_account:
-            tokens_collection.update_one(
-                {"user_id": "test_shared_calendar"},
-                {"$set": {
-                    "access_token": encrypt_token(creds.token), 
-                    "expiry": creds.expiry.isoformat()}}
-        )
-        else:
-            creds.refresh(Request())
-            tokens_collection.update_one(
-                {"user_id": user_id},
-                {"$set": {
-                    "access_token": encrypt_token(creds.token), 
-                    "expiry": creds.expiry.isoformat()}}
-            )
+        is_using_test_account = user_account.get("is_using_test_account", True) or is_test
         
-    service = build('calendar', 'v3', credentials=creds)
-    print("########### Calendar service initialized {service}", flush=True)
-    return service
+        userId = user_id if not is_using_test_account else "test_shared_calendar"
+        user_token = tokens_collection.find_one({"user_id": userId})
+
+        if not user_token:
+            message = "User not authenticated. Type 'authenticate' to connect to your Google Calendar, or type 'authenticate test' to use joint testing calendar."
+            raise Exception(message)
+        
+        access_token = user_token.get("access_token")
+        refresh_token = user_token.get("refresh_token")
+
+        creds = Credentials(
+            token=decrypt_token(access_token),
+            refresh_token=decrypt_token(refresh_token),
+            token_uri=TOKEN_URI,
+            client_id=TEST_CLIENT_ID if is_using_test_account else CLIENT_ID,
+            client_secret=TEST_CLIENT_SECRET if is_using_test_account else CLIENT_SECRET,
+            scopes=SCOPES
+        )
+        print("########### creds: ", creds, flush=True)
+
+        is_creds_expired = creds.expired and creds.refresh_token
+        if is_creds_expired:
+            if is_using_test_account:
+                tokens_collection.update_one(
+                    {"user_id": "test_shared_calendar"},
+                    {"$set": {
+                        "access_token": encrypt_token(creds.token), 
+                        "expiry": creds.expiry.isoformat()}}
+            )
+            else:
+                creds.refresh(Request())
+                tokens_collection.update_one(
+                    {"user_id": user_id},
+                    {"$set": {
+                        "access_token": encrypt_token(creds.token), 
+                        "expiry": creds.expiry.isoformat()}}
+                )
+            
+        service = build('calendar', 'v3', credentials=creds)
+        print("########### Calendar service initialized {service}", flush=True)
+        return service
+    except Exception as e:
+        print(f"########### Error initializing calendar service: {str(e)}", flush=True)
+        return None
     
 def get_user_calendar_timezone(user_id, is_test=False):
     try:
