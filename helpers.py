@@ -70,11 +70,12 @@ def convert_timezone(time_str, target_tz='Asia/Jakarta'):
         return None
 
 def send_whatsapp_message(to, message):
-    print(f"########### Sending WhatsApp message from: {TWILIO_PHONE_NUMBER_SANDBOX} to {to}: {message}", flush=True)
+    twilio_number = TWILIO_PHONE_NUMBER if mode == 'production' else TWILIO_PHONE_NUMBER_SANDBOX
+    print(f"########### Sending WhatsApp message from: {twilio_number} to {to}: {message}", flush=True)
     try: 
         client = TwilioClient(TWILIO_SID, TWILIO_AUTH_TOKEN)
         client.messages.create(
-            from_=TWILIO_PHONE_NUMBER_SANDBOX,
+            from_=twilio_number,
             to=to,
             body=message
         )
