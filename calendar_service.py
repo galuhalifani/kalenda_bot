@@ -277,7 +277,7 @@ def update_event_draft(user_id, new_draft):
 
 def save_event_to_draft(instruction, user_id):
     print(f"########### save_event_to_draft: {instruction}", flush=True)
-    
+
     json_str = instruction.split('draft_event:')[1].strip()
     print(f"########### details to be parsed: {json_str}", flush=True)
     event_details = json.loads(json_str)
@@ -419,20 +419,19 @@ def save_event_to_calendar(instruction, user_id, is_test=False):
     print(f"########### FINAL event details: {event}", flush=True)
     try:
         if sendUpdates == 'all':
-            try:
-                new_event = service.events().insert(calendarId=calendar_id, body=event, sendUpdates=sendUpdates).execute()
-            except Exception as e:
-                print(f"########### Error CALENDARRRRRRRRRRRRRRRRRRRRRRRR: {e}", flush=True)
+            new_event = service.events().insert(calendarId=calendar_id, body=event, sendUpdates=sendUpdates).execute()
         else:
-            try:
-                new_event = service.events().insert(calendarId=calendar_id, body=event).execute()
-            except Exception as e:
-                print(f"########### Error CALENDARRRRRRRRRRR LAGIIIIIIIIII, {e}", flush=True)
+            new_event = service.events().insert(calendarId=calendar_id, body=event).execute()
 
         print(f"########### Event created: {new_event.get('htmlLink')}", flush=True)
 
         confirm_event_draft(user_id)
-        return f"Event {new_event.get('summary', '')} created: {new_event.get('htmlLink')}"
+        if is_test:
+            full_link = new_event.get('htmlLink')
+            new_event_link = full_link.split('eid=')[1]
+        else:
+            new_event_link = full_link
+        return f"Event {new_event.get('summary', '')} created: {new_event_link}"
     except Exception as e:
         print(f"########### Error adding to g-cal: {e}")
         return None
