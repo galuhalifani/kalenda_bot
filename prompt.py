@@ -79,7 +79,7 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
             "start_date": start_date,
             "end_date": end_date (if not specified, use one hour after start date),
             "location": location,
-            "description": description (by default, add "\nCreated by kalenda AI" at the end, unless user specifically ask to remove it. If long, format the description text in a nice, readable way. ),
+            "description": description (by default, add "-- Created by kalenda AI" at the end, unless user specifically ask to remove it. If long, format the description text in a nice, readable way. ),
             "calendar": calendar_name (If the user does not specify the calendar name, you will write "primary" as the calendar_name),
             "reminder": reminder (convert to minutes, write 0 if not available),
             "participants": participants (containing email addresses in a list format, if the attendees are not in email address format, specify them as attendees under description instead. If no participants, write []),

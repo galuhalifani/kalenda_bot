@@ -142,12 +142,6 @@ def extract_json_block(text):
         elif text[i] == '}':
             brace_count -= 1
             if brace_count == 0:
-                raw_json = text[start_index:i+1]
-                break
-    else:
-        return None
-
-    cleaned_json = re.sub(r'(?<=": )\n+', r'\\n', raw_json)
-    cleaned_json = re.sub(r'\n+', r'\\n', cleaned_json)
-
-    return cleaned_json
+                return text[start_index:i+1]
+                
+    return None
