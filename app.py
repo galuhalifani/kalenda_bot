@@ -169,8 +169,10 @@ def receive_whatsapp():
                         send_whatsapp_message(whatsapp_number, instruction_text)
                         send_whatsapp_message(ADMIN_NUMBER, f"email {email} has been whitelisted and user {user_number} has been notified.")
                         update_send_whitelisted_message_status(user_number)
+                        return str(resp)
                     except Exception as e:
-                        print(f"########### Error sending whitelisted success message: {str(e)}", flush=True)                    
+                        print(f"########### Error sending whitelisted success message: {str(e)}", flush=True)
+                        return str(e)                    
 
             else:
                 oauth_connection_verification = verify_oauth_connection(user_id)
@@ -191,7 +193,7 @@ def receive_whatsapp():
 
         reply_text = summarize_event(resp, user_id, incoming_msg, is_test, image_data_url, voice_data_filename)
         if not isinstance(reply_text, str):
-            reply_text = str(reply_text)  # or a fallback message
+            reply_text = str(reply_text)
         
         is_too_long = len(reply_text) > 1400
 
