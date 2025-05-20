@@ -42,13 +42,15 @@ def get_calendar_service(user_id, is_test=False):
         
         access_token = user_token.get("access_token")
         refresh_token = user_token.get("refresh_token")
+        client_id = user_token.get("client_id", CLIENT_ID)
+        client_secret = user_token.get("client_secret", CLIENT_SECRET)
 
         creds = Credentials(
             token=decrypt_token(access_token),
             refresh_token=decrypt_token(refresh_token),
             token_uri=TOKEN_URI,
-            client_id=TEST_CLIENT_ID if is_using_test_account else CLIENT_ID,
-            client_secret=TEST_CLIENT_SECRET if is_using_test_account else CLIENT_SECRET,
+            client_id=TEST_CLIENT_ID if is_using_test_account else client_id,
+            client_secret=TEST_CLIENT_SECRET if is_using_test_account else client_secret,
             scopes=SCOPES
         )
         print("########### creds: ", creds, flush=True)

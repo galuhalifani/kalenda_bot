@@ -18,7 +18,10 @@ def decrypt_token(token_str_encrypted):
     fernet = Fernet(FERNET_KEY)
     return fernet.decrypt(token_str_encrypted.encode()).decode()
 
-def save_token(user_id, creds):
+def save_token(user_id, creds, credentials):
+    client_id = credentials["web"]["client_id"] if credentials else CLIENT_ID
+    client_secret = credentials["web"]["client_secret"] if credentials else CLIENT_SECRET
+
     tokens_collection.update_one(
         {"user_id": user_id},
         {"$set": {
@@ -27,8 +30,8 @@ def save_token(user_id, creds):
             "scopes": ",".join(SCOPES),
             "expiry": creds.expiry.isoformat(),
             "is_using_test_account": False,
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET,
+            "client_id": client_id,
+            "client_secret": client_secret,
         }},
     upsert=True)
 

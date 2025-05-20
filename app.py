@@ -66,7 +66,7 @@ def oauth_callback():
         creds = flow.credentials
 
         try:
-            save_token(user_id, creds)
+            save_token(user_id, creds, credentials)
         except Exception as e:
             print(f"########### ERROR saving token: {e}", flush=True)
             return "❌ Error saving token. Please try again."
@@ -101,6 +101,7 @@ def receive_whatsapp():
         is_test = False
         
         try:
+            print(f"########### Check User: {user_id}", flush=True)
             user = check_user(user_id)
             is_test = user.get("is_using_test_account", True)
             if (user['status'] == 'new'):
@@ -120,28 +121,35 @@ def receive_whatsapp():
             print(f"########### ERROR initial checkings: {e}", flush=True)
 
         try:
+            print(f"########### Check Authenticate Keyword: {incoming_msg}", flush=True)
             if is_authenticating:
+                print(f"########### Check Authenticate Email Keyword: {incoming_msg}", flush=True)
                 authenticate_args = incoming_msg.split(authenticate_keyword)
                 
                 if len(authenticate_args) > 1: # if authenticate <email>
                     return authenticate_command(incoming_msg, resp, user_id)
 
                 # if just authenticate
+                print(f"########### Check Authenticate Only Keyword: {incoming_msg}", flush=True)
                 return authenticate_only_command(resp, user_id)
 
             elif is_authenticating_test:
+                print(f"########### Check Authenticate Test Keyword: {incoming_msg}", flush=True)
                 is_test = True
                 use_test_account(user_id)
                 resp.message(using_test_calendar)
                 return str(resp)
             
             elif is_whitelisting:
+                print(f"########### Check Whitelisting Keyword: {incoming_msg}", flush=True)
                 return whitelist_admin_command(incoming_msg, resp, user_id)       
 
             elif is_revoking:
+                print(f"########### Check Revoking Keyword: {incoming_msg}", flush=True)
                 return revoke_access_command(resp, user_id)
 
             else:
+                print(f"########### Verify Oauth: {user_id}", flush=True)
                 oauth_connection_verification = verify_oauth_connection(user_id)
                 print(f"########### Verified OAuth connection: {user_id}, {oauth_connection_verification}", flush=True)
                 if oauth_connection_verification == False:
@@ -179,6 +187,7 @@ def receive_whatsapp():
         add_user_memory(user_id, incoming_msg, reply_text)
 
         return str(resp)
+    
     except Exception as e:
         print(f"######## ERROR processing webhook: {e}", flush=True)
         resp = MessagingResponse()
