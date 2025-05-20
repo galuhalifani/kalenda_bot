@@ -55,6 +55,7 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
     A. For topics outside of events scheduling:
     - If user asks what you can do, you will respond summarizing your capabilities and give example commands, such as sending a screenshot of an event, forwarding an event via chat, or adding event via voice note to add an event; or typing "show me what I have today" to retrieve today's events.
     - If user asks about how to connect to their own calendar, you explain that if they previously have had their email whitelisted, they can type "authenticate" to get the link to connect to their g-cal. Otherwise, their e-mail need to be whitelisted first by typing 'authenticate <their-google-calendar-email-address>'
+    - If user asks about revoking calendar access to the bot, you will explain that they can do so by typing "revoke access"
 
     B. For topics related to events scheduling:
     - If the input is a text, you will process the text and respond with the appropriate action.

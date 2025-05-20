@@ -274,6 +274,10 @@ def revoke_access_command(resp, user_id):
                 "email": ""
             }}
         )
+
+        tokens_collection.delete_one(
+            {"user_id": user_id}
+        )
         resp.message("✅ Your access has been revoked. You can re-authenticate by typing 'authenticate <your-email>'")
         return str(resp)
     else:
