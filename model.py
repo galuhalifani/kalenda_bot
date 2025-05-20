@@ -151,26 +151,16 @@ def summarize_event(resp, user_id, input, is_auth_test=False, image_data_url=Non
         try:
             events = get_upcoming_events(answer, user_id, is_test)
             print(f"########### All list of Events: {events}", flush=True)
-            user_events = transform_events_to_text(events, user_timezone)
-            return user_events
+            event_list, _, _, action = events
+            if action == 'retrieve':
+                user_events = transform_events_to_text(events, user_timezone)
+                return user_events
+            elif action == 'retrieve_free_time':
+                event_list, _, _ = events
+                raw_answer_analyzer = init_llm(user_id, input, 'schedule_analyzer', image_data_url, user_timezone, voice_data_filename, event_list)
+                return raw_answer_analyzer
         except Exception as e:
             print(f"########### Error retrieving events: {str(e)}", flush=True)
-            return "Sorry, I am unable to fetch your events at the moment."
-    
-    elif is_answer_string and 'retrieve_free_time:' in answer.strip():
-        print(f"########### Retrieving free time: {answer}", flush=True)
-        try:
-            loading_message = "Analyzing..."
-            send_whatsapp_message(f'{whatsappNum}', loading_message)
-        except Exception as e:
-            print(f"########### Error sending loading message: {str(e)}", flush=True)
-        try:
-            events = get_upcoming_events(answer, user_id, is_test)
-            event_list, _, _ = events
-            raw_answer_analyzer = init_llm(user_id, input, 'schedule_analyzer', image_data_url, user_timezone, voice_data_filename, event_list)
-            return raw_answer_analyzer
-        except Exception as e:
-            print(f"########### Error retrieving available slots: {str(e)}", flush=True)
             return "Sorry, I am unable to fetch your events at the moment."
 
     elif is_answer_string and 'timezone_set:' in answer.strip():

@@ -93,6 +93,7 @@ def get_upcoming_events(instruction, user_id, is_test=False):
     splitted = instruction.split('retrieve_event:')[1].strip()
     event_details = json.loads(splitted)
     is_period_provided = event_details.get('start', None) or event_details.get('end', None) or event_details.get('q', None)
+    action = event_details.get('action', 'retrieve')
 
     print(f"############## IS PERIOD PROVIDED: {is_period_provided}", flush=True)
 
@@ -197,11 +198,11 @@ def get_upcoming_events(instruction, user_id, is_test=False):
                         **event
                     })
     
-    return (all_events, is_period_provided, request_timezone)
+    return (all_events, is_period_provided, request_timezone, action)
 
 def transform_events_to_text(eventList, user_timezone=None):
     print(f"########### Transforming events to text: {eventList}", flush=True)
-    events, is_period_provided, request_timezone = eventList
+    events, is_period_provided, request_timezone, action = eventList
 
     if not events:
         return "No upcoming events found."

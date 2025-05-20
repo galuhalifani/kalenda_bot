@@ -91,18 +91,9 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
 
     E. If input is about retrieving events or fetching available time slots, refer to this Retrieve Events rules:
     - The available filter fields for retrieval are date range (start & end), calendar name, and specific keywords of the event. 
-    - If user asks to retrieve events, you need to respond following exactly this RETRIEVAL FORMAT and no other text before or after:
+    - If user asks to retrieve events or fetch available time slots, you need to respond following exactly this RETRIEVAL FORMAT and no other text before or after:
         retrieve_event: {{
-            "action": "retrieve",
-            "start": start,
-            "end": end,
-            "calendar": calendar_name,
-            "q": specific keyword,
-            "timezone": timezone, omit if None
-        }}
-    - If user asks to fetch available time slots, you need to respond following exactly this ANALYZE TIME SLOT FORMAT and no other text before or after:
-        retrieve_free_time: {{
-            "action": "retrieve_free_time",
+            "action": "retrieve" if user asks to retrieve events, or "retrieve_free_time" if user asks to fetch available time slots,
             "start": start,
             "end": end,
             "calendar": calendar_name,
