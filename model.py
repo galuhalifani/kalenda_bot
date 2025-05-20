@@ -29,7 +29,8 @@ from auth import decrypt_token, encrypt_token, save_token
 from helpers import clean_instruction_block, readable_date, clean_description, extract_phone_number, get_image_data_url, split_message,send_whatsapp_message, transcribe_audio, extract_json_block
 from calendar_service import get_user_calendar_timezone, get_calendar_service, save_event_to_draft, save_event_to_calendar, get_upcoming_events, update_event_draft, transform_events_to_text
 from session_memory import session_memories, get_user_memory, max_chat_stored
-from prompt import prompt_init, prompt_analyzer
+from prompt import prompt_init, prompt_analyzer, prompt_add_event, prompt_retrieve, prompt_main
+from text import get_help_text
 
 if mode == 'test':
     os.environ["SSL_CERT_FILE"] = r"C:\Users\galuh\miniconda\envs\py10\Library\ssl\cacert.pem"
@@ -69,6 +70,10 @@ def init_llm(user_id, input, prompt_type, image_data_url=None, user_timezone=Non
             prompt = prompt_init(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
         elif prompt_type == 'schedule_analyzer':
             prompt = prompt_analyzer(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations, other_files)
+        elif prompt_type == 'add_event':
+            prompt = prompt_add_event(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
+        elif prompt_type == 'retrieve':
+            prompt = prompt_retrieve(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
 
         messages=[{
                 'role': 'user',

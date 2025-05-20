@@ -60,7 +60,7 @@ Kalenda is perfect for:
 ---
 
 ## Privacy First
-We never sell or share your data. Calendar access is optional and revocable. See [Privacy Policy](./docs/PRIVACY.md) for details.
+We never sell or share your data. Calendar access is optional and revocable. See [Privacy Policy](./docs/privacy.md) for details.
 
 ---
 

@@ -1,6 +1,6 @@
 # 📄 Kalenda Privacy Policy
 
-**Effective Date: [Insert Date]**
+**Effective Date: 20-05-2025**
 
 Kalenda (“we”, “our”, or “us”) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use the Kalenda assistant via WhatsApp.
 

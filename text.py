@@ -26,3 +26,28 @@ def connect_to_calendar_confirmation(auth_link, email):
         f"You can only connect to the email that has been whitelisted\n\n"
         f"The link will expire in 24 hours. To generate a new link, type _authenticate_"
     )
+
+def get_help_text():
+    return (
+        "*👋 Welcome to Kalenda!*\n\n"
+        "*What I Can Do:*\n"
+        "• Draft events from text, image, or voice note\n"
+        "• Modify & add events to calendar\n"
+        "• Fetch your agenda\n"
+        "• Analyze your availability\n\n"
+        "*What I Can't Do:*\n"
+        "• Edit or delete existing events\n"
+        "(Do this directly in Google Calendar)\n\n"
+        "*Try saying:*\n"
+        "_Doctor appointment tomorrow 10AM at RS Bunda_\n"
+        "_What’s my agenda next week?_\n"
+        "_What’s my availability Friday?_\n\n"
+        "*Getting Started:*\n"
+        "1. Use me now with public calendar\n"
+        "2. Or connect to your own Google Calendar:\n"
+        "   - `authenticate <your email>` then wait to get you whitelisted\n"
+        "   - `authenticate` to connect to your calendar\n"
+        "   - `revoke access` to revoke all access\n\n"
+        "ℹ️ *Need help with shared calendar edits?*\n"
+        "Email: kalenda.bot@gmail.com\n"
+    )

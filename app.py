@@ -12,7 +12,7 @@ from model import summarize_event, mode
 from helpers import extract_emails, extract_phone_number, get_image_data_url, send_whatsapp_message, get_voice_data_url, trim_reply
 from auth import verify_auth_token_link, verify_oauth_connection, save_token, get_credentials, generate_auth_link, authenticate_command, authenticate_only_command, whitelist_admin_command
 from database import add_pending_auth, get_pending_auth, check_user, check_user_balance, deduct_chat_balance, use_test_account, check_user_active_email, update_user_whitelist_status, update_send_whitelisted_message_status, add_user_whitelist_status, update_send_test_calendar_message, revoke_access_command
-from text import greeting, using_test_calendar
+from text import greeting, using_test_calendar, get_help_text
 from session_memory import delete_user_memory, add_user_memory
 import secrets
 from flask import request
@@ -40,7 +40,7 @@ def home():
 
 @app.route("/privacy")
 def privacy():
-    with open("docs/PRIVACY.md", "r", encoding="utf-8") as f:
+    with open("docs/privacy.md", "r", encoding="utf-8") as f:
         md_content = f.read()
         html_content = markdown.markdown(md_content)
         return render_template_string("""
@@ -61,7 +61,19 @@ def contact():
         <body>{{ content|safe }}</body>
         </html>
         """, content=html_content)
-    
+
+@app.route("/guide")
+def contact():
+    with open("docs/user_guide.md", "r", encoding="utf-8") as f:
+        md_content = f.read()
+        html_content = markdown.markdown(md_content)
+        return render_template_string("""
+        <html>
+        <head><title>User Guide</title></head>
+        <body>{{ content|safe }}</body>
+        </html>
+        """, content=html_content)
+        
 @app.route("/auth")
 def auth():
     try:
@@ -193,6 +205,11 @@ def receive_whatsapp():
 
             elif is_revoking:
                 return revoke_access_command(resp, user_id)
+            
+            elif lower_incoming_msg == "menu":
+                help_text = get_help_text()
+                resp.message(help_text)
+                return str(resp)
 
             else:
                 oauth_connection_verification = verify_oauth_connection(user_id)
