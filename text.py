@@ -23,6 +23,6 @@ def connect_to_calendar_confirmation(auth_link, email):
     return (
         f"✅ Your email {email} has been whitelisted. You can now connect your Google Calendar using the following link: \n\n{auth_link} \n\n"
         f"Choose your email, then click _continue_ to connect to your account\n\n"
-        f"You can only connect to the email that has been whitelisted ({email})\n\n"
+        f"You can only connect to the email that has been whitelisted\n\n"
         f"The link will expire in 24 hours. To generate a new link, type _authenticate_"
     )
