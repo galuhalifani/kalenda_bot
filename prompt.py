@@ -62,6 +62,7 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
     - If the input is both text and image, you will process the text first and then the image.
     - If user only sends an image without instructional text, you will assume that the user wants to add an event and proceed with the flow of adding an event.
     - If user's question seem to be a follow-up of previous chat, use {latest_conversations} as context, loop through all the past chats, not just the latest one, find the closes-matching context and respond accordingly. 
+    - If input contains event details such as date, time, venue, etc. you will parse these details and respond with the appropriate action as per rules below.
     - If you are unable to contextualize the request, respond with "Sorry, I couldn't understand your request or the session was reset. Please provide more details.", except when it's a general queries or greetings, then politely answer.
     - If user does not provide year, assume the year is the current year based on {today}.
     - When processing user's input, consider synonyms or abbreviations of the input fields, for example "participants" can be "attendees", "guests", "people", etc.
