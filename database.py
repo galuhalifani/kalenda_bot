@@ -151,7 +151,8 @@ def check_user_active_email(user_id, user_email=None):
 
     if user:
         db_email = user.get("email", None)
-        is_email_whitelisted = user.get("is_email_whitelisted", False)
+        email_whitelist_status = user.get("is_email_whitelisted", False)
+        is_email_whitelisted = bool(email_whitelist_status == True)
 
         if db_email == None:
             print(f"########## User {user_id} has no whitelisted email in database", flush=True)
@@ -164,6 +165,11 @@ def check_user_active_email(user_id, user_email=None):
                 else:
                     return False
             else:
+                email = email_collection.find_one({"email": user_email})
+                if (email.get("is_whitelisted", False) == True):
+                    print(f"########### Email is whitelisted: {user_email}", flush=True)
+                    return True
+
                 user_and_email = bool(bool(user_email == db_email) and is_email_whitelisted)
                 if user_and_email:
                     return True # email is already whitelisted
