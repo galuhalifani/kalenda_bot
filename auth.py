@@ -40,7 +40,7 @@ def save_token(user_id, creds):
 def generate_auth_link(user_id):
     token = secrets.token_hex(16)
     print(f"########### Generated token: {token}", flush=True)
-    expires = datetime.now() + timedelta(minutes=30)
+    expires = datetime.now() + timedelta(hours=24)
 
     tokens_collection.update_one(
         {"user_id": user_id},
@@ -145,7 +145,7 @@ def whitelist_admin_command(incoming_msg, resp, user_id):
                     try:
                         whatsapp_number = f"whatsapp:{user_number}"
                         auth_link = generate_auth_link(user_number)
-                        instruction_text = f"✅ Your email {email} has been whitelisted. You can now connect your Google Calendar.\n\nClick to connect your Google Calendar:\n{auth_link}"
+                        instruction_text = f"✅ Your email {email} has been whitelisted. You can now connect your Google Calendar using the following link: \n\n{auth_link} \n\n. The link will expire in 24 hours. To generate a new link, type 'authenticate'"
                         send_whatsapp_message(whatsapp_number, instruction_text)
                         send_whatsapp_message(ADMIN_NUMBER, f"email {email} has been whitelisted and user {user_number} has been notified.")
                         update_send_whitelisted_message_status(user_number)
