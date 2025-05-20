@@ -110,6 +110,7 @@ def authenticate_command(incoming_msg, resp, user_id):
 
 def authenticate_only_command(resp, user_id):
     has_active_email = check_user_active_email(user_id)
+    print(f"########### User {user_id} has active email: {has_active_email}", flush=True)
     if has_active_email == True:
         auth_link = generate_auth_link(user_id)
         resp.message(f"🔐 Click to connect your Google Calendar:\n{auth_link}\n\n. You can only connect to calendar under your e-mail that has been whitelisted. To connect to another calendar, type 'authenticate <email-address>'")
