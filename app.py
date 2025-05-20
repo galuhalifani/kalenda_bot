@@ -101,7 +101,6 @@ def receive_whatsapp():
         is_test = False
         
         try:
-            print(f"########### Check User: {user_id}", flush=True)
             user = check_user(user_id)
             is_test = user.get("is_using_test_account", True)
             if (user['status'] == 'new'):
@@ -121,38 +120,29 @@ def receive_whatsapp():
             print(f"########### ERROR initial checkings: {e}", flush=True)
 
         try:
-            print(f"########### Check Authenticate Keyword: {incoming_msg}", flush=True)
             if is_authenticating:
-                authenticate_args = incoming_msg.split(authenticate_keyword)
-                print(f"########### Authenticate Args: {authenticate_args}", flush=True)
+                email = incoming_msg[len("authenticate"):].strip()
                 
-                if len(authenticate_args) > 1: # if authenticate <email>
-                    print(f"########### Check Authenticate Email Keyword: {authenticate_args}", flush=True)
+                if email: # if authenticate <email>
                     return authenticate_command(incoming_msg, resp, user_id)
-
-                # if just authenticate
-                print(f"########### Check Authenticate Only Keyword: {incoming_msg}", flush=True)
-                return authenticate_only_command(resp, user_id)
+                else:
+                    # if just authenticate
+                    return authenticate_only_command(resp, user_id)
 
             elif is_authenticating_test:
-                print(f"########### Check Authenticate Test Keyword: {incoming_msg}", flush=True)
                 is_test = True
                 use_test_account(user_id)
                 resp.message(using_test_calendar)
                 return str(resp)
             
             elif is_whitelisting:
-                print(f"########### Check Whitelisting Keyword: {incoming_msg}", flush=True)
                 return whitelist_admin_command(incoming_msg, resp, user_id)       
 
             elif is_revoking:
-                print(f"########### Check Revoking Keyword: {incoming_msg}", flush=True)
                 return revoke_access_command(resp, user_id)
 
             else:
-                print(f"########### Verify Oauth: {user_id}", flush=True)
                 oauth_connection_verification = verify_oauth_connection(user_id)
-                print(f"########### Verified OAuth connection: {user_id}, {oauth_connection_verification}", flush=True)
                 if oauth_connection_verification == False:
                     try:
                         update_send_test_calendar_message(resp, using_test_calendar, user_id)
