@@ -96,7 +96,7 @@ def authenticate_command(incoming_msg, resp, user_id):
                 if not is_whitelisted:
                     add_user_whitelist_status(user_id, user_email)
                     send_whatsapp_message(ADMIN_NUMBER, "New user request for whitelisting: " + user_email + "\n" + "link to whitelist: " + WHITELIST_LINK)
-                    resp.message("✅ Your email has been added to the whitelist. You will receive a confirmation message once it's approved.")
+                    resp.message("⏳ Your email is pending for whitelisting. You will receive a confirmation message within 24hr or less once it's added to the whitelist.")
                     return str(resp)
                 else:
                     auth_link = generate_auth_link(user_id)
