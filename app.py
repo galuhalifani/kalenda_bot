@@ -23,11 +23,11 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", secrets.token_hex(16))
 pending_auth = {}
 
 @app.route("/")
-def root():
+def home():
     return render_template("index.html")
     
 @app.route("/about")
-def home():
+def about():
     with open("docs/index.md", "r", encoding="utf-8") as f:
         md_content = f.read()
         html_content = markdown.markdown(md_content)
@@ -63,7 +63,7 @@ def contact():
         """, content=html_content)
 
 @app.route("/guide")
-def contact():
+def guide():
     with open("docs/user_guide.md", "r", encoding="utf-8") as f:
         md_content = f.read()
         html_content = markdown.markdown(md_content)
@@ -75,7 +75,7 @@ def contact():
         """, content=html_content)
 
 @app.route("/terms")
-def contact():
+def terms():
     with open("docs/terms.md", "r", encoding="utf-8") as f:
         md_content = f.read()
         html_content = markdown.markdown(md_content)
