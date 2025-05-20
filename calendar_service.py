@@ -31,6 +31,8 @@ from session_memory import latest_event_draft, get_user_memory, session_memories
 def get_calendar_service(user_id, is_test=False):
     try:        
         is_using_test_account = is_test
+        print(f"########### is_using_test_account: {is_using_test_account}", flush=True)
+        
         userId = user_id if not is_using_test_account else "test_shared_calendar"
         user_token = tokens_collection.find_one({"user_id": userId})
 

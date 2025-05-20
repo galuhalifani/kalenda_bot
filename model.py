@@ -107,8 +107,6 @@ def summarize_event(resp, user_id, input, is_auth_test=False, image_data_url=Non
     answer = clean_instruction_block(raw_answer)
     is_answer_string = isinstance(answer, str)
     whatsappNum = f'whatsapp:+{user_id}'
-    user_account = user_collection.find_one({"user_id": user_id})
-    is_test = user_account.get("is_using_test_account", True) or is_auth_test
 
     if is_answer_string and 'add_event:' in answer.strip():
         print(f"########### Adding event: {answer}", flush=True)

@@ -31,6 +31,7 @@ def check_user(user_id):
         last_chat = user.get("last_chat", datetime.now(tzn.utc))
         balance = user.get("chat_balance", daily_limit)
         userType = user.get("type", 'regular')
+        is_using_test_account = user.get("is_using_test_account", True)
 
         if last_chat.tzinfo is None:
             last_chat = last_chat.replace(tzinfo=tzn.utc)
@@ -46,11 +47,11 @@ def check_user(user_id):
             balance = daily_limit
             user_collection.update_one({"user_id": user_id}, {"$set": {"chat_balance": daily_limit}})
 
-        return {"status": "existing", "user_id": user_id, "chat_balance": balance, "type": userType, "user_details": user}
+        return {"status": "existing", "user_id": user_id, "chat_balance": balance, "type": userType, "user_details": user, "is_using_test_account": is_using_test_account}
     else:
-        user_collection.insert_one({"user_id": user_id, "timestamp": datetime.now(tzn.utc).isoformat(), "chat_balance": daily_limit, "type": "regular"})
+        user_collection.insert_one({"user_id": user_id, "timestamp": datetime.now(tzn.utc).isoformat(), "chat_balance": daily_limit, "type": "regular", "is_using_test_account": True})
         print(f'########## creating new user: {user_id}, balance: {daily_limit}')
-        return {"status": "new", "user_id": user_id, "user_details": user, "chat_balance": daily_limit, "type": "regular"}
+        return {"status": "new", "user_id": user_id, "user_details": user, "chat_balance": daily_limit, "type": "regular", "is_using_test_account": True}
 
 def deduct_chat_balance(user, user_id):
     try:
@@ -260,6 +261,7 @@ def revoke_access_command(resp, user_id):
                 "is_email_whitelisted": False,
                 "whitelisted_message_sent": False,
                 "test_calendar_message": True,
+                "is_using_test_account": True
             },
             "$unset": {
                 "email": ""

@@ -102,6 +102,7 @@ def receive_whatsapp():
         
         try:
             user = check_user(user_id)
+            is_test = user.get("is_using_test_account", True)
             if (user['status'] == 'new'):
                 print(f"########### Send initial greetings: {user_id}")
                 try:
