@@ -9,3 +9,20 @@ using_test_calendar = (
     "You can access and view the test calendar here:\n"
     "📅 https://calendar.google.com/calendar/embed?src=kalenda.bot%40gmail.com \n\n"
 )
+
+def connect_to_calendar(auth_link, email):
+    return (
+        "🔐 Click to connect your Google Calendar:\n"
+        f"{auth_link}\n\n"
+        f"Choose your email, then click _continue_ to connect to your account\n"
+        f"You can only connect to the email that has been whitelisted ({email}). To connect to another calendar, type _authenticate <other-email-address>_\n\n"
+        f"Please note that the link will expire in 24 hours. If you need a new link, just type _authenticate_.\n\n"
+    )
+
+def connect_to_calendar_confirmation(auth_link, email):
+    return (
+        f"✅ Your email {email} has been whitelisted. You can now connect your Google Calendar using the following link: \n\n{auth_link} \n\n"
+        f"Choose your email, then click _continue_ to connect to your account\n"
+        f"You can only connect to the email that has been whitelisted ({email})\n"
+        f"The link will expire in 24 hours. To generate a new link, type _authenticate_"
+    )

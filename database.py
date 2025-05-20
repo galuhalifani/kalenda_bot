@@ -161,7 +161,7 @@ def check_user_active_email(user_id, user_email=None):
             if user_email == None:     
                 if is_email_whitelisted == True:
                     print(f"########### User has email in database: {db_email}", flush=True)
-                    return True
+                    return db_email
                 else:
                     return False
             else:
@@ -169,11 +169,11 @@ def check_user_active_email(user_id, user_email=None):
                 if email:
                     if (email.get("is_whitelisted", False) == True):
                         print(f"########### Email is whitelisted: {user_email}", flush=True)
-                        return True
+                        return email
 
                 user_and_email = bool(bool(user_email == db_email) and is_email_whitelisted)
                 if user_and_email:
-                    return True # email is already whitelisted
+                    return user_email # email is already whitelisted
         
     return False
 

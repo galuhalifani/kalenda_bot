@@ -7,6 +7,7 @@ from database import user_collection, tokens_collection, email_collection, add_u
 from helpers import extract_phone_number, extract_emails, send_whatsapp_message
 import secrets
 from keywords import *
+from text import connect_to_calendar, connect_to_calendar_confirmation
 
 def encrypt_token(token_str):
     FERNET_KEY = os.environ["FERNET_KEY"]
@@ -105,7 +106,7 @@ def authenticate_command(incoming_msg, resp, user_id):
                     return str(resp)
                 else:
                     auth_link = generate_auth_link(user_id)
-                    resp.message(f"❌ This email is already whitelisted. Click to connect your Google Calendar:\n\n{auth_link}")
+                    resp.message(f"❌ This email is already whitelisted. Click to connect your Google Calendar:\n\n{auth_link}.\n\n Select your email, then click _continue_ to connect to your account.")
                     return str(resp)
             except Exception as e:
                 print(f"########### Error adding user whitelist status: {e}", flush=True)
@@ -121,9 +122,9 @@ def authenticate_only_command(resp, user_id):
     print(f"########### Authenticate only command for user: {user_id}", flush=True)
     has_active_email = check_user_active_email(user_id)
     print(f"########### User {user_id} has active email: {has_active_email}", flush=True)
-    if has_active_email == True:
+    if has_active_email:
         auth_link = generate_auth_link(user_id)
-        resp.message(f"🔐 Click to connect your Google Calendar:\n{auth_link}\n\n. You can only connect to calendar under your e-mail that has been whitelisted. To connect to another calendar, type 'authenticate <email-address>'")
+        resp.message(connect_to_calendar(auth_link, has_active_email))
         return str(resp)
     elif has_active_email == False:
         resp.message("❌ Your email is not yet whitelisted. Please type 'authenticate <your-google-calendar-email>' to whitelist your email")
@@ -156,7 +157,7 @@ def whitelist_admin_command(incoming_msg, resp, user_id):
                     try:
                         whatsapp_number = f"whatsapp:{user_number}"
                         auth_link = generate_auth_link(user_number)
-                        instruction_text = f"✅ Your email {email} has been whitelisted. You can now connect your Google Calendar using the following link: \n\n{auth_link} \n\n. The link will expire in 24 hours. To generate a new link, type 'authenticate'"
+                        instruction_text = connect_to_calendar_confirmation(auth_link, email)
                         send_whatsapp_message(whatsapp_number, instruction_text)
                         send_whatsapp_message(ADMIN_NUMBER, f"email {email} has been whitelisted and user {user_number} has been notified.")
                         update_send_whitelisted_message_status(user_number)
