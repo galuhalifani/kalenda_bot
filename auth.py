@@ -110,8 +110,12 @@ def authenticate_command(incoming_msg, resp, user_id):
             except Exception as e:
                 print(f"########### Error adding user whitelist status: {e}", flush=True)
                 resp.message("❌ Error adding your email to the whitelist. Please try again.")
-                send_whatsapp_message(ADMIN_NUMBER, {user_id, user_email, incoming_msg, e})
+                send_whatsapp_message(ADMIN_NUMBER, f"ERROR: {user_id, user_email, incoming_msg, e}")
                 return str(resp)
+        else:
+            resp.message("Unable to detect email address. Please try again.")
+            send_whatsapp_message(ADMIN_NUMBER, f"ERROR: {user_id, user_email, incoming_msg, e}")
+            return str(resp)
 
 def authenticate_only_command(resp, user_id):
     print(f"########### Authenticate only command for user: {user_id}", flush=True)
