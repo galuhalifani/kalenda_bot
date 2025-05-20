@@ -73,6 +73,18 @@ def contact():
         <body>{{ content|safe }}</body>
         </html>
         """, content=html_content)
+
+@app.route("/terms")
+def contact():
+    with open("docs/terms.md", "r", encoding="utf-8") as f:
+        md_content = f.read()
+        html_content = markdown.markdown(md_content)
+        return render_template_string("""
+        <html>
+        <head><title>Terms of Service</title></head>
+        <body>{{ content|safe }}</body>
+        </html>
+        """, content=html_content)
         
 @app.route("/auth")
 def auth():
