@@ -53,17 +53,26 @@ def check_user(user_id):
         return {"status": "new", "user_id": user_id, "user_details": user, "chat_balance": daily_limit, "type": "regular"}
 
 def deduct_chat_balance(user, user_id):
-    if user:
-        print(f'########## deduct_chat_balance: {user}, type: {user["type"]}, balance: {user["chat_balance"]}')
-        if user["type"] == 'regular' and user["chat_balance"] > 0:
-            user_collection.update_one(
-                {"user_id": user_id},
-                {
-                    "$inc": {"chat_balance": -1},
-                    "$set": {"last_chat": datetime.now(tzn.utc)}
-                }
-            )
-        
+    try:
+        if user:
+            print(f'########## deduct_chat_balance: {user}, type: {user["type"]}, balance: {user["chat_balance"]}')
+            if user["type"] == 'regular' and user["chat_balance"] > 0:
+                user_collection.update_one(
+                    {"user_id": user_id},
+                    {
+                        "$inc": {"chat_balance": -1},
+                        "$set": {"last_chat": datetime.now(tzn.utc)}
+                    }
+                )
+                print(f"########### Balance deducted", flush=True)
+                return True
+        else:
+            print(f"########### User not found: {user_id}", flush=True)
+            return False
+    except Exception as e:
+        print(f"####### Error deducting chat balance: {str(e)}")
+        return False
+
 def check_user_balance(user):
     balance = user["chat_balance"]
     print(f'########## check_user_balance: {user}, type: {user["type"]}, balance: {balance}')
@@ -238,3 +247,26 @@ def update_send_test_calendar_message(resp, using_test_calendar, user_id):
             return False
 
     return test_calendar_message
+
+def revoke_access_command(resp, user_id):
+    user_email = user_collection.find_one({"user_id": user_id}).get("email", None)
+    if (user_email):
+        email_collection.delete_one(
+            {"email": user_email})
+        
+        user_collection.update_one(
+            {"user_id": user_id},
+            {"$set": {
+                "is_email_whitelisted": False,
+                "whitelisted_message_sent": False,
+                "test_calendar_message": True,
+            },
+            "$unset": {
+                "email": ""
+            }}
+        )
+        resp.message("✅ Your access has been revoked. You can re-authenticate by typing 'authenticate <your-email>'")
+        return str(resp)
+    else:
+        resp.message("You are not connected to any email account. To connect and get whitelisted, please type 'authenticate <your-email>'")
+        return str(resp)

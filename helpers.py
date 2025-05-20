@@ -10,8 +10,14 @@ from twilio.rest import Client as TwilioClient
 import time
 import uuid
 
+def trim_reply(reply_text):
+    max_length=1400
+    split = [reply_text[i:i+max_length] for i in range(0, len(reply_text), max_length)]
+    trimmed_reply = split[0]
+    reply_text = f"Your list is too long, I can only show partial results. For more complete list, please specify a shorter date range.\n\n {trimmed_reply}"
+    return reply_text
+
 def clean_instruction_block(instruction):
-    # remove backticks and "```json" if present
     instruction = instruction.replace("```json", "").replace("```", "").strip()
     return instruction
 
@@ -20,9 +26,9 @@ def readable_date(date_str, is_datetime=None, with_timezone=True):
         date = datetime.fromisoformat(date_str)
 
         if is_datetime:
-            transformed = date.strftime("%A, %d %B %Y %H:%M %Z") if with_timezone else date.strftime("%A, %d %B %Y %H:%M")
+            transformed = date.strftime("%a, %d %b %Y %H:%M %Z") if with_timezone else date.strftime("%a, %d %b %Y %H:%M")
         else:
-            transformed = date.strftime("%A, %d %B %Y")
+            transformed = date.strftime("%a, %d %b %Y")
 
         return transformed
     except ValueError:

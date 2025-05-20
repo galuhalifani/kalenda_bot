@@ -110,10 +110,8 @@ def get_upcoming_events(instruction, user_id, is_test=False):
 
     try:
         start = datetime.fromisoformat(start)
-        print('START BEFORE', start, flush=True)
         if (start < datetime.now(tzn.utc)):
             start = datetime.now(tzn.utc)
-            print('START AFTER', start, flush=True)
     except ValueError:
         print(f"########### Invalid start date format: {start}", flush=True)
         start = datetime.now()
@@ -205,8 +203,6 @@ def transform_events_to_text(eventList, user_timezone=None):
     print(f"########### Transforming events to text: {eventList}", flush=True)
     events, is_period_provided, request_timezone = eventList
 
-    print(f"########### Events: {events}", flush=True)
-    print(f"########### Is period provided: {is_period_provided}", flush=True)
     if not events:
         return "No upcoming events found."
     
@@ -242,7 +238,7 @@ def transform_events_to_text(eventList, user_timezone=None):
         end_str = readable_date(end, is_datetime, False)
 
         if calendar not in calendar_list:
-            lines = [f"____________________\n_*Calendar*_: {calendar}\n\n*{summary}*", f"{start_str} - {end_str} {timezone}"]         # Build optional lines only if values exist
+            lines = [f"____________________\n_*Calendar*_: {calendar}\n\n*{summary}*", f"{start_str} - {end_str} {timezone}"]
             calendar_list.append(calendar)
         else:
             lines = [f"*{summary}*", f"{start_str} - {end_str} {timezone}"]
@@ -318,7 +314,7 @@ def save_event_to_draft(instruction, user_id):
         num_counter += 1
         indent = ' ' * 4 if num_counter > 5 else ''
         text_reply += f"{indent}{num_counter}. *Event Reminder:* {event_details['reminder']} minutes before the event"
-    if event_details['send_updates']:
+    if event_details['send_updates'] and event_details['participants']:
         num_counter += 1
         indent = ' ' * 4 if num_counter > 5 else ''
         text_reply += f"{indent}{num_counter}. *Event Creation Updates:* To be sent to participants\n"

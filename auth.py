@@ -3,9 +3,10 @@ import os
 from datetime import datetime, timedelta, timezone as tzn
 from cryptography.fernet import Fernet
 from creds import *
-from database import user_collection, tokens_collection
-from helpers import extract_phone_number
+from database import user_collection, tokens_collection, email_collection, add_user_whitelist_status, check_user_active_email, update_user_whitelist_status, update_send_whitelisted_message_status
+from helpers import extract_phone_number, extract_emails, send_whatsapp_message
 import secrets
+from keywords import *
 
 def encrypt_token(token_str):
     FERNET_KEY = os.environ["FERNET_KEY"]
@@ -83,3 +84,75 @@ def verify_oauth_connection(user_id):
         return False
     
     return True
+
+def authenticate_command(incoming_msg, resp, user_id):
+    authenticate_args = incoming_msg.split(authenticate_keyword)
+    
+    if len(authenticate_args) > 1: # if authenticate <email>
+        user_email = extract_emails(authenticate_args)
+        if user_email:
+            try:
+                is_whitelisted = check_user_active_email(user_id, user_email)
+                if not is_whitelisted:
+                    add_user_whitelist_status(user_id, user_email)
+                    send_whatsapp_message(ADMIN_NUMBER, "New user request for whitelisting: " + user_email)
+                    resp.message("✅ Your email has been added to the whitelist. You will receive a confirmation message once it's approved.")
+                    return str(resp)
+                else:
+                    auth_link = generate_auth_link(user_id)
+                    resp.message(f"❌ This email is already whitelisted. Click to connect your Google Calendar:\n\n{auth_link}")
+                    return str(resp)
+            except Exception as e:
+                print(f"########### Error adding user whitelist status: {e}", flush=True)
+                resp.message("❌ Error adding your email to the whitelist. Please try again.")
+                send_whatsapp_message(ADMIN_NUMBER, {user_id, user_email, incoming_msg, e})
+                return str(resp)
+
+def authenticate_only_command(resp, user_id):
+    has_active_email = check_user_active_email(user_id)
+    if has_active_email == True:
+        auth_link = generate_auth_link(user_id)
+        resp.message(f"🔐 Click to connect your Google Calendar:\n{auth_link}\n\n. You can only connect to calendar under your e-mail that has been whitelisted. To connect to another calendar, type 'authenticate <email-address>'")
+        return str(resp)
+    elif has_active_email == False:
+        resp.message("❌ Your email is not yet whitelisted. Please type 'authenticate <your-google-calendar-email>' to whitelist your email")
+        return str(resp)
+    else:
+        resp.message("Your email is pending for whitelisting. We will get back to you in 24h or less. For any questions, reach out to admin at galuh.adika@gmail.com.")
+        return str(resp)
+
+def whitelist_admin_command(incoming_msg, resp, user_id):
+    if user_id == extract_phone_number(ADMIN_NUMBER):
+        message_array = incoming_msg.split(" ")
+        if len(message_array) > 1:
+            if message_array[1] == "failed" or message_array[1] == "fail":
+                email = message_array[2]
+                user_number = user_collection.find_one({"email": email}).get("user_id")
+                if user_number:
+                        try:
+                            whatsapp_number = f"whatsapp:{user_number}"
+                            instruction_text = f"Your email {email} was unable to be whitelisted or is not a valid google calendar email address.\n\n Please use other email address, type authenticate followed by your email, or contact admin for further assistance."
+                            send_whatsapp_message(whatsapp_number, instruction_text)
+                            send_whatsapp_message(ADMIN_NUMBER, f"email {email} has been rejected and user {user_number} has been notified.")
+                            return str(resp)
+                        except Exception as e:
+                            print(f"########### Error sending whitelisted failed message: {str(e)}", flush=True)
+                            return str(e)
+            else: 
+                email = message_array[1]
+                user_number = update_user_whitelist_status(email, True)
+                if user_number:
+                    try:
+                        whatsapp_number = f"whatsapp:{user_number}"
+                        auth_link = generate_auth_link(user_number)
+                        instruction_text = f"✅ Your email {email} has been whitelisted. You can now connect your Google Calendar.\n\nClick to connect your Google Calendar:\n{auth_link}"
+                        send_whatsapp_message(whatsapp_number, instruction_text)
+                        send_whatsapp_message(ADMIN_NUMBER, f"email {email} has been whitelisted and user {user_number} has been notified.")
+                        update_send_whitelisted_message_status(user_number)
+                        return str(resp)
+                    except Exception as e:
+                        print(f"########### Error sending whitelisted success message: {str(e)}", flush=True)
+                        return str(e)  
+        else:
+            resp.message("Incomplete command")
+            return str(resp)

@@ -29,12 +29,12 @@ from auth import decrypt_token, encrypt_token, save_token
 from helpers import clean_instruction_block, readable_date, clean_description, extract_phone_number, get_image_data_url, split_message,send_whatsapp_message, transcribe_audio
 from calendar_service import get_user_calendar_timezone, get_calendar_service, save_event_to_draft, save_event_to_calendar, get_upcoming_events, update_event_draft, transform_events_to_text
 from session_memory import session_memories, get_user_memory, max_chat_stored
-from prompt import prompt_init
+from prompt import prompt_init, prompt_analyzer
 
 if mode == 'test':
     os.environ["SSL_CERT_FILE"] = r"C:\Users\galuh\miniconda\envs\py10\Library\ssl\cacert.pem"
 
-def init_llm(user_id, input, image_data_url=None, user_timezone=None, voice_data_filename=None):
+def init_llm(user_id, input, prompt_type, image_data_url=None, user_timezone=None, voice_data_filename=None, other_files=None):
     print(f"############ Initialized with {mode} mode", flush=True)
     try:
         print(f"########### Timezone: {user_timezone}", flush=True)
@@ -65,7 +65,10 @@ def init_llm(user_id, input, image_data_url=None, user_timezone=None, voice_data
             except Exception as e:
                 print(f"########### Error transcribing audio: {str(e)}", flush=True)
 
-        prompt = prompt_init(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
+        if prompt_type == 'main':   
+            prompt = prompt_init(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
+        elif prompt_type == 'schedule_analyzer':
+            prompt = prompt_analyzer(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations, other_files)
 
         messages=[{
                 'role': 'user',
@@ -100,16 +103,14 @@ def init_llm(user_id, input, image_data_url=None, user_timezone=None, voice_data
 def summarize_event(resp, user_id, input, is_auth_test=False, image_data_url=None, voice_data_filename=None):
     cal_timezone = get_user_calendar_timezone(user_id, is_auth_test)
     user_timezone = check_timezone(user_id, cal_timezone)
-    raw_answer = init_llm(user_id, input, image_data_url, user_timezone, voice_data_filename)
-
-    print(f"########### Answer: {raw_answer}", flush=True)
+    raw_answer = init_llm(user_id, input, 'main', image_data_url, user_timezone, voice_data_filename, None)
     answer = clean_instruction_block(raw_answer)
-
+    is_answer_string = isinstance(answer, str)
     whatsappNum = f'whatsapp:+{user_id}'
     user_account = user_collection.find_one({"user_id": user_id})
     is_test = user_account.get("is_using_test_account", True) or is_auth_test
 
-    if isinstance(answer, str) and 'add_event:' in answer.strip():
+    if is_answer_string and 'add_event:' in answer.strip():
         print(f"########### Adding event: {answer}", flush=True)
         try:
             loading_message = "Adding your event..."
@@ -124,8 +125,8 @@ def summarize_event(resp, user_id, input, is_auth_test=False, image_data_url=Non
         except Exception as e:
             print(f"########### Error adding new event: {e}", flush=True)
             return "Sorry, I could not add the event to your calendar."
-        
-    elif isinstance(answer, str) and 'draft_event:' in answer.strip():
+
+    elif is_answer_string and 'draft_event:' in answer.strip():
         print(f"########### Drafting event: {answer}", flush=True)
         try:
             loading_message = "Drafting..."
@@ -140,7 +141,7 @@ def summarize_event(resp, user_id, input, is_auth_test=False, image_data_url=Non
             print(f"########### Error parsing event details: {str(e)}", flush=True)
             return "Sorry, I couldn't understand the event details."
         
-    elif isinstance(answer, str) and 'retrieve_event:' in answer.strip():
+    elif is_answer_string and 'retrieve_event:' in answer.strip():
         print(f"########### Retrieving events: {answer}", flush=True)
         try:
             loading_message = "Fetching your events..."
@@ -155,8 +156,24 @@ def summarize_event(resp, user_id, input, is_auth_test=False, image_data_url=Non
         except Exception as e:
             print(f"########### Error retrieving events: {str(e)}", flush=True)
             return "Sorry, I am unable to fetch your events at the moment."
+    
+    elif is_answer_string and 'retrieve_free_time:' in answer.strip():
+        print(f"########### Retrieving free time: {answer}", flush=True)
+        try:
+            loading_message = "Analyzing..."
+            send_whatsapp_message(f'{whatsappNum}', loading_message)
+        except Exception as e:
+            print(f"########### Error sending loading message: {str(e)}", flush=True)
+        try:
+            events = get_upcoming_events(answer, user_id, is_test)
+            event_list, _, _ = events
+            raw_answer_analyzer = init_llm(user_id, input, 'schedule_analyzer', image_data_url, user_timezone, voice_data_filename, event_list)
+            return raw_answer_analyzer
+        except Exception as e:
+            print(f"########### Error retrieving available slots: {str(e)}", flush=True)
+            return "Sorry, I am unable to fetch your events at the moment."
 
-    elif isinstance(answer, str) and 'timezone_set:' in answer.strip():
+    elif is_answer_string and 'timezone_set:' in answer.strip():
         print(f"########### Setting timezone: {answer}", flush=True)
         try:
             new_timezone = answer.split('timezone_set: ')[1].strip()
@@ -169,7 +186,7 @@ def summarize_event(resp, user_id, input, is_auth_test=False, image_data_url=Non
             print(f"########### Error updating timezone: {str(e)}", flush=True)
             return "Sorry, I could not set your timezone. Please try again."
         
-    elif isinstance(answer, str) and answer.strip().startswith("Event not added"):
+    elif is_answer_string and answer.strip().startswith("Event not added"):
         print(f"########### Event not added: {answer}", flush=True)
         return "Sorry, I'm unable to assist you with this event. Please start over with more details."
     
