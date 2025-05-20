@@ -18,10 +18,13 @@ if client:
     user_collection = db['user']
     tokens_collection = db['tokens']
     email_collection = db['email']
+    pending_auth_collection = db['pending_auth']
+    pending_auth_collection.create_index("created_at", expireAfterSeconds=900)
 else:
     user_collection = None
     tokens_collection = None
     email_collection = None
+    pending_auth_collection = None
 
 def check_user(user_id):
     print(f"########### Checking user: {user_id}", flush=True)
@@ -283,3 +286,26 @@ def revoke_access_command(resp, user_id):
     else:
         resp.message("You are not connected to any email account. To connect and get whitelisted, please type 'authenticate <your-email>'")
         return str(resp)
+    
+def add_pending_auth(user_id, state):
+    try:
+        pending_auth_collection.update_one(
+            {"state": state},
+            {"$set": {"user_id": user_id, "created_at": datetime.now()}},
+            upsert=True
+        )
+        return True
+    except Exception as e:
+        print(f"Error adding pending auth for {user_id}: {e}", flush=True)
+        return False
+
+def get_pending_auth(state):
+    try:
+        pending_auth = pending_auth_collection.find_one_and_delete({"state": state})
+        if pending_auth:
+            return pending_auth
+        else:
+            return None
+    except Exception as e:
+        print(f"Error getting pending auth for {state}: {e}", flush=True)
+        return None

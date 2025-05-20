@@ -3,7 +3,7 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from flask import Flask, request, jsonify, redirect, session
+from flask import Flask, request, jsonify, redirect, session, render_template_string, render_template
 from google_auth_oauthlib.flow import Flow
 from twilio.twiml.messaging_response import MessagingResponse
 from creds import *
@@ -11,18 +11,44 @@ from keywords import *
 from model import summarize_event, mode
 from helpers import extract_emails, extract_phone_number, get_image_data_url, send_whatsapp_message, get_voice_data_url, trim_reply
 from auth import verify_auth_token_link, verify_oauth_connection, save_token, get_credentials, generate_auth_link, authenticate_command, authenticate_only_command, whitelist_admin_command
-from database import check_user, check_user_balance, deduct_chat_balance, use_test_account, check_user_active_email, update_user_whitelist_status, update_send_whitelisted_message_status, add_user_whitelist_status, update_send_test_calendar_message, revoke_access_command
+from database import add_pending_auth, get_pending_auth, check_user, check_user_balance, deduct_chat_balance, use_test_account, check_user_active_email, update_user_whitelist_status, update_send_whitelisted_message_status, add_user_whitelist_status, update_send_test_calendar_message, revoke_access_command
 from text import greeting, using_test_calendar
 from session_memory import delete_user_memory, add_user_memory
 import secrets
 from flask import request
+import markdown
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", secrets.token_hex(16))
+pending_auth = {}
 
 @app.route("/")
 def root():
-    return "Kalenda Bot API is running."
+    return render_template("index.html")
+    
+@app.route("/about")
+def home():
+    with open("docs/index.md", "r", encoding="utf-8") as f:
+        md_content = f.read()
+        html_content = markdown.markdown(md_content)
+        return render_template_string("""
+        <html>
+        <head><title>About</title></head>
+        <body>{{ content|safe }}</body>
+        </html>
+        """, content=html_content)
+
+@app.route("/privacy")
+def privacy():
+    with open("docs/PRIVACY.md", "r", encoding="utf-8") as f:
+        md_content = f.read()
+        html_content = markdown.markdown(md_content)
+        return render_template_string("""
+        <html>
+        <head><title>Privacy Policy</title></head>
+        <body>{{ content|safe }}</body>
+        </html>
+        """, content=html_content)
 
 @app.route("/auth")
 def auth():
@@ -44,6 +70,8 @@ def auth():
         )
         auth_url, state = flow.authorization_url(prompt='consent')
         session["state"] = state
+        add_pending_auth(user_id, state)
+        print("########### SESSION CONTENT auth:", dict(session), flush=True)
         return redirect(auth_url)
     except Exception as e:
         print(f"########### ERROR in auth: {e}", flush=True)
@@ -53,8 +81,21 @@ def auth():
 def oauth_callback():
     print(f"########### OAuth callback triggered", flush=True)
     try:
-        state = session["state"]
-        user_id = session["user_id"]
+        print("########### SESSION CONTENT callback:", dict(session), flush=True)
+        state_from_query = request.args.get("state")
+        if not state_from_query:
+            raise Exception("Missing OAuth state")
+        
+        state = session.get("state") 
+        user_id = session.get("user_id")
+
+        if not state or not user_id:
+            auth_data = get_pending_auth(state_from_query)
+            if not auth_data:
+                raise Exception("Invalid or expired state")
+            state = auth_data['state']
+            user_id = auth_data['user_id']
+        
         credentials = get_credentials()
         flow = Flow.from_client_config(
             credentials,

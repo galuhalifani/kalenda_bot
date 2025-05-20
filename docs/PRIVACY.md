@@ -14,7 +14,8 @@ Kalenda (“we”, “our”, or “us”) is committed to protecting your priva
 
 ### 2. Messages & Media
 - Messages you send to Kalenda (including text, images, voice notes, and screenshots)
-- We process this information to extract events or understand your requests.
+- We temporarily process these information to extract events or understand your requests.
+- We DO NOT store or retain any of those media or event details in our database
 
 ### 3. Google Calendar Data (Optional)
 - If you choose to connect your Google Calendar, we access:
@@ -43,9 +44,9 @@ Kalenda uses AI models (e.g., OpenAI’s GPT and Whisper) to understand your mes
 
 ## 📁 Data Retention
 
-- Event-related messages may be temporarily stored to provide context and memory.
-- Google access tokens are encrypted and stored securely.
-- You may revoke access or delete your data at any time by messaging: `revoke`.
+- Event-related messages may be temporarily stored to provide context and memory, and will be removed after 24 hours.
+- Google access and refresh tokens are encrypted and stored securely.
+- You may revoke access or delete your data at any time by messaging: `revoke access`.
 
 ---
 

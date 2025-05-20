@@ -143,7 +143,7 @@ def whitelist_admin_command(incoming_msg, resp, user_id):
                 if user_number:
                         try:
                             whatsapp_number = f"whatsapp:{user_number}"
-                            instruction_text = f"Your email {email} was unable to be whitelisted or is not a valid google calendar email address.\n\n Please use other email address, type authenticate followed by your email, or contact admin for further assistance."
+                            instruction_text = f"Your email {email} is not associated with a valid Google account, or has disabled access to 3rd-party Oauth.\n\n Please use another email address: type _authenticate <email-address>_, or contact admin for further assistance."
                             send_whatsapp_message(whatsapp_number, instruction_text)
                             send_whatsapp_message(ADMIN_NUMBER, f"email {email} has been rejected and user {user_number} has been notified.")
                             return str(resp)

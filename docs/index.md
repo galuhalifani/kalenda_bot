@@ -65,24 +65,7 @@ We never sell or share your data. Calendar access is optional and revocable. See
 ---
 
 ## 🛠️ Architecture Overview
-User (WhatsApp)
-    │
-    ▼
-Twilio WhatsApp Webhook
-    │
-    ▼
-Flask API (Kalenda)
-    │
- ┌───────────────────────────────┐
- │ AI Processing (OpenAI GPT)    │
- │ OCR/Transcription (Whisper)   │
- └───────────────────────────────┘
-    │
-    ▼
-Google Calendar API (Public/Shared Test Calendar or Personal Calendar)
-    │
-    ▼
-MongoDB (Token Storage, User Data)
+User (WhatsApp) ──▶ Twilio Webhook ──▶ Flask API (Kalenda) ──▶ [ AI: GPT / Whisper ] ──▶ Google Calendar API ──▶ MongoDB (Tokens, User Data)
 
 ---
 
