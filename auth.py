@@ -26,7 +26,9 @@ def save_token(user_id, creds):
             "refresh_token": encrypt_token(creds.refresh_token),
             "scopes": ",".join(SCOPES),
             "expiry": creds.expiry.isoformat(),
-            "is_using_test_account": False
+            "is_using_test_account": False,
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
         }},
     upsert=True)
 
@@ -109,6 +111,7 @@ def authenticate_command(incoming_msg, resp, user_id):
                 return str(resp)
 
 def authenticate_only_command(resp, user_id):
+    print(f"########### Authenticate only command for user: {user_id}", flush=True)
     has_active_email = check_user_active_email(user_id)
     print(f"########### User {user_id} has active email: {has_active_email}", flush=True)
     if has_active_email == True:
