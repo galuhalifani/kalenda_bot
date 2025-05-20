@@ -95,7 +95,7 @@ def authenticate_command(incoming_msg, resp, user_id):
                 is_whitelisted = check_user_active_email(user_id, user_email)
                 if not is_whitelisted:
                     add_user_whitelist_status(user_id, user_email)
-                    send_whatsapp_message(ADMIN_NUMBER, "New user request for whitelisting: " + user_email + "\n" + "link to whitelist: " + "https://console.cloud.google.com/auth/audience?inv=1&invt=Abx4XQ&authuser=0&project=kalenda-459801")
+                    send_whatsapp_message(ADMIN_NUMBER, "New user request for whitelisting: " + user_email + "\n" + "link to whitelist: " + WHITELIST_LINK)
                     resp.message("✅ Your email has been added to the whitelist. You will receive a confirmation message once it's approved.")
                     return str(resp)
                 else:
