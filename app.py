@@ -123,10 +123,11 @@ def receive_whatsapp():
         try:
             print(f"########### Check Authenticate Keyword: {incoming_msg}", flush=True)
             if is_authenticating:
-                print(f"########### Check Authenticate Email Keyword: {incoming_msg}", flush=True)
                 authenticate_args = incoming_msg.split(authenticate_keyword)
+                print(f"########### Authenticate Args: {authenticate_args}", flush=True)
                 
                 if len(authenticate_args) > 1: # if authenticate <email>
+                    print(f"########### Check Authenticate Email Keyword: {authenticate_args}", flush=True)
                     return authenticate_command(incoming_msg, resp, user_id)
 
                 # if just authenticate
