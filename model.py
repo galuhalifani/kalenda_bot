@@ -156,7 +156,6 @@ def summarize_event(resp, user_id, input, is_auth_test=False, image_data_url=Non
                 user_events = transform_events_to_text(events, user_timezone)
                 return user_events
             elif action == 'retrieve_free_time':
-                event_list, _, _ = events
                 raw_answer_analyzer = init_llm(user_id, input, 'schedule_analyzer', image_data_url, user_timezone, voice_data_filename, event_list)
                 return raw_answer_analyzer
         except Exception as e:
