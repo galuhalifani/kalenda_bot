@@ -45,9 +45,7 @@ def init_llm(user_id, input, image_data_url=None, user_timezone=None, voice_data
             _, memory = get_user_memory(user_id)
             if memory:
                 latest_draft = memory['latest_event_draft'] if memory['latest_event_draft'] else None
-                print(f"########### Latest draft: {latest_draft}", flush=True)
                 latest_draft_status = latest_draft['status'] if latest_draft else None
-                print(f"########### Latest draft status: {latest_draft_status}", flush=True)
                 user_latest_event_draft = latest_draft if latest_draft_status == 'draft' else None
                 print(f"########### User latest event draft: {user_latest_event_draft}", flush=True)
                 latest_conversations = memory['latest_conversations'] if memory['latest_conversations'] else None
@@ -68,7 +66,6 @@ def init_llm(user_id, input, image_data_url=None, user_timezone=None, voice_data
                 print(f"########### Error transcribing audio: {str(e)}", flush=True)
 
         prompt = prompt_init(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
-        print(f"########### Prompt: {prompt}", flush=True)
 
         messages=[{
                 'role': 'user',
@@ -94,15 +91,14 @@ def init_llm(user_id, input, image_data_url=None, user_timezone=None, voice_data
             max_tokens=1000
         )
 
-        print(f'####### full response: {llm}', flush=True)
         response = llm.choices[0].message.content
         return response
     except Exception as e:
         print(f"########### Error in LLM: {str(e)}", flush=True)
         return "Sorry, I couldn't process your request. Please try again."
 
-def summarize_event(resp, user_id, input, is_test=False, image_data_url=None, voice_data_filename=None):
-    cal_timezone = get_user_calendar_timezone(user_id, is_test)
+def summarize_event(resp, user_id, input, is_auth_test=False, image_data_url=None, voice_data_filename=None):
+    cal_timezone = get_user_calendar_timezone(user_id, is_auth_test)
     user_timezone = check_timezone(user_id, cal_timezone)
     raw_answer = init_llm(user_id, input, image_data_url, user_timezone, voice_data_filename)
 
@@ -110,11 +106,13 @@ def summarize_event(resp, user_id, input, is_test=False, image_data_url=None, vo
     answer = clean_instruction_block(raw_answer)
 
     whatsappNum = f'whatsapp:+{user_id}'
+    user_account = user_collection.find_one({"user_id": user_id})
+    is_test = user_account.get("is_using_test_account", True) or is_auth_test
+
     if isinstance(answer, str) and 'add_event:' in answer.strip():
         print(f"########### Adding event: {answer}", flush=True)
         try:
             loading_message = "Adding your event..."
-            # resp.message(loading_message)
             send_whatsapp_message(f'{whatsappNum}', loading_message)
         except Exception as e:
             print(f"########### Error sending loading message: {str(e)}", flush=True)
@@ -131,7 +129,6 @@ def summarize_event(resp, user_id, input, is_test=False, image_data_url=None, vo
         print(f"########### Drafting event: {answer}", flush=True)
         try:
             loading_message = "Drafting..."
-            # resp.message(loading_message)
             send_whatsapp_message(f'{whatsappNum}', loading_message)
         except Exception as e:
             print(f"########### Error sending loading message: {str(e)}", flush=True)
@@ -147,7 +144,6 @@ def summarize_event(resp, user_id, input, is_test=False, image_data_url=None, vo
         print(f"########### Retrieving events: {answer}", flush=True)
         try:
             loading_message = "Fetching your events..."
-            # resp.message(loading_message)
             send_whatsapp_message(f'{whatsappNum}', loading_message)
         except Exception as e:
             print(f"########### Error sending loading message: {str(e)}", flush=True)

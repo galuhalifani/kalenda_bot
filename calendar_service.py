@@ -29,11 +29,8 @@ from helpers import readable_date, convert_timezone, all_valid_emails
 from session_memory import latest_event_draft, get_user_memory, session_memories
 
 def get_calendar_service(user_id, is_test=False):
-    try:
-        user_account = user_collection.find_one({"user_id": user_id})
-
-        is_using_test_account = user_account.get("is_using_test_account", True) or is_test
-        
+    try:        
+        is_using_test_account = is_test
         userId = user_id if not is_using_test_account else "test_shared_calendar"
         user_token = tokens_collection.find_one({"user_id": userId})
 
@@ -428,9 +425,11 @@ def save_event_to_calendar(instruction, user_id, is_test=False):
         calendar_embed =  "https://calendar.google.com/calendar/u/0/embed?src=kalenda.bot@gmail.com&mode=AGENDA#eventpage_6%3A"
         full_link = new_event.get('htmlLink')
         if is_test:
+            print(f"########### Test calendar link: {is_test}", flush=True)
             event_id = full_link.split('eid=')[1]
             new_event_link = f"{calendar_embed}{event_id}"
         else:
+            print(f"########### User calendar link: {is_test}", flush=True)
             new_event_link = full_link
         
         start_date = new_event['start'].get('dateTime', new_event['start'].get('date'))
