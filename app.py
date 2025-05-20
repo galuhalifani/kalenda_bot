@@ -145,7 +145,10 @@ def receive_whatsapp():
                 oauth_connection_verification = verify_oauth_connection(user_id)
                 print(f"########### Verified OAuth connection: {user_id}, {oauth_connection_verification}", flush=True)
                 if oauth_connection_verification == False:
-                    update_send_test_calendar_message(resp, using_test_calendar, user_id)
+                    try:
+                        update_send_test_calendar_message(resp, using_test_calendar, user_id)
+                    except Exception as e:
+                        print(f"########### ERROR updating send test calendar message: {e}", flush=True)
 
         except Exception as e:
             resp.message("Error during authentication. Please try again.")

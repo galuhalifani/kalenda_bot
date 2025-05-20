@@ -5,7 +5,7 @@ greeting = (
 
 using_test_calendar = (
     "🔧 You are now using our public test calendar.\n\n"
-    "If you wish to connect your own calendar, please type 'authenticate <your-g-cal-email>', for example: _authenticate kalenda@gmail.com_. We will add your email to the whitelist within 24 hours.\n\n"
+    "If you wish to connect your own calendar, please type: \n _authenticate <your-g-cal-email>_ \n for example: _authenticate kalenda@gmail.com_. \n We will add your email to the whitelist within 24 hours.\n\n"
     "You can access and view the test calendar here:\n"
     "📅 https://calendar.google.com/calendar/embed?src=kalenda.bot%40gmail.com \n\n"
 )
