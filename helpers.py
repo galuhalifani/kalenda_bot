@@ -129,3 +129,19 @@ def extract_emails(args):
         else:
             print("########### No email found in the text", flush=True)
             return None
+        
+def extract_json_block(text):
+    start_index = text.find('{')
+    if start_index == -1:
+        return None
+
+    brace_count = 0
+    for i in range(start_index, len(text)):
+        if text[i] == '{':
+            brace_count += 1
+        elif text[i] == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                return text[start_index:i+1]
+            
+    return None

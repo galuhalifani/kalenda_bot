@@ -26,7 +26,7 @@ import re
 from creds import *
 from database import user_collection, tokens_collection, check_user, check_timezone, add_update_timezone, deduct_chat_balance, check_user_balance
 from auth import decrypt_token, encrypt_token, save_token
-from helpers import clean_instruction_block, readable_date, clean_description, extract_phone_number, get_image_data_url, split_message,send_whatsapp_message, transcribe_audio
+from helpers import clean_instruction_block, readable_date, clean_description, extract_phone_number, get_image_data_url, split_message,send_whatsapp_message, transcribe_audio, extract_json_block
 from calendar_service import get_user_calendar_timezone, get_calendar_service, save_event_to_draft, save_event_to_calendar, get_upcoming_events, update_event_draft, transform_events_to_text
 from session_memory import session_memories, get_user_memory, max_chat_stored
 from prompt import prompt_init, prompt_analyzer
@@ -163,7 +163,8 @@ def summarize_event(resp, user_id, input, is_test=False, image_data_url=None, vo
     elif is_answer_string and 'timezone_set:' in answer.strip():
         print(f"########### Setting timezone: {answer}", flush=True)
         try:
-            new_timezone = answer.split('timezone_set: ')[1].strip()
+            new_timezone_raw = answer.split('timezone_set: ')[1].strip()
+            new_timezone = extract_json_block(new_timezone_raw)
             updated_timezone = add_update_timezone(user_id, new_timezone)
             if updated_timezone:
                 return f'Your timezone has been changed to {new_timezone}. Please proceed with your request.'

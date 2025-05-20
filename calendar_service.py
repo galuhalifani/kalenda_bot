@@ -25,14 +25,14 @@ import re
 from creds import *
 from database import user_collection, tokens_collection
 from auth import decrypt_token, encrypt_token, save_token
-from helpers import readable_date, convert_timezone, all_valid_emails
+from helpers import readable_date, convert_timezone, all_valid_emails, extract_json_block
 from session_memory import latest_event_draft, get_user_memory, session_memories
 
 def get_calendar_service(user_id, is_test=False):
     try:        
         is_using_test_account = is_test
         print(f"########### is_using_test_account: {is_using_test_account}", flush=True)
-        
+
         userId = user_id if not is_using_test_account else "test_shared_calendar"
         user_token = tokens_collection.find_one({"user_id": userId})
 
@@ -93,7 +93,8 @@ def list_calendars(service):
 
 def get_upcoming_events(instruction, user_id, is_test=False):
     splitted = instruction.split('retrieve_event:')[1].strip()
-    event_details = json.loads(splitted)
+    splitted_cleaned = extract_json_block(splitted)
+    event_details = json.loads(splitted_cleaned)
     is_period_provided = event_details.get('start', None) or event_details.get('end', None) or event_details.get('q', None)
     action = event_details.get('action', 'retrieve')
 
@@ -274,7 +275,8 @@ def update_event_draft(user_id, new_draft):
 def save_event_to_draft(instruction, user_id):
     print(f"########### save_event_to_draft: {instruction}", flush=True)
 
-    json_str = instruction.split('draft_event:')[1].strip()
+    json_str_raw = instruction.split('draft_event:')[1].strip()
+    json_str = extract_json_block(json_str_raw)
     print(f"########### details to be parsed: {json_str}", flush=True)
     event_details = json.loads(json_str)
 
@@ -339,7 +341,8 @@ def save_event_to_calendar(instruction, user_id, is_test=False):
     service = get_calendar_service(user_id, is_test)
 
     try:
-        json_str = instruction.split('add_event:')[1].strip()
+        json_str_raw = instruction.split('add_event:')[1].strip()
+        json_str = extract_json_block(json_str_raw)
         print(f"####### JSON string: {json_str}")
         event_details = json.loads(json_str)
         update_event_draft(user_id, event_details)
