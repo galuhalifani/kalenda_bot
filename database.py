@@ -191,14 +191,14 @@ def update_user_whitelist_status(email, status):
             {"$set": {"is_email_whitelisted": status}},
             upsert=True
         )
-        return True
+        user = user_collection.find_one({"email": email})
+        user_number = user.get("user_id")
+        return user_number
     except Exception as e:
         print(f"Error updating whitelist status for {email}: {e}", flush=True)
         return False
 
-def update_send_whitelisted_message_status(email):
-    user = user_collection.find_one({"email": email})
-    user_number = user.get("user_id")
+def update_send_whitelisted_message_status(user_number):
     user_collection.update_one(
         {"user_id": user_number},
         {"$set": {"whitelisted_message_sent": True}},

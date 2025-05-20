@@ -369,7 +369,6 @@ def save_event_to_calendar(instruction, user_id, is_test=False):
 
     sendUpdates = 'all' if (sendUpdates or sendUpdates == 'true') else 'none'
 
-    print('CALENDAR NAME????????: ', calendar_name)
     if calendar_name != 'primary':
         calendars = list_calendars(service)
         calendar_id = None
@@ -423,15 +422,27 @@ def save_event_to_calendar(instruction, user_id, is_test=False):
         else:
             new_event = service.events().insert(calendarId=calendar_id, body=event).execute()
 
-        print(f"########### Event created: {new_event.get('htmlLink')}", flush=True)
+        print(f"########### Event created: {new_event}", flush=True)
 
         confirm_event_draft(user_id)
+        calendar_embed =  "https://calendar.google.com/calendar/u/0/embed?src=kalenda.bot@gmail.com&mode=AGENDA#eventpage_6%3A"
         full_link = new_event.get('htmlLink')
         if is_test:
-            new_event_link = full_link.split('eid=')[1]
+            event_id = full_link.split('eid=')[1]
+            new_event_link = f"{calendar_embed}{event_id}"
         else:
             new_event_link = full_link
-        return f"Event {new_event.get('summary', '')} created: {new_event_link}"
+        
+        start_date = new_event['start'].get('dateTime', new_event['start'].get('date'))
+        start = readable_date(start_date, True, True)
+
+        summary = f'''
+        \n*Event Created!*\n
+        📅: {new_event.get('summary', '')}\n
+        🕒: {start}\n
+        👉: {new_event_link}
+        '''
+        return f"{summary}"
     except Exception as e:
         print(f"########### Error adding to g-cal: {e}")
         return None

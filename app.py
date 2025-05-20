@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify, redirect, session
 from google_auth_oauthlib.flow import Flow
 from twilio.twiml.messaging_response import MessagingResponse
 from creds import *
+from keywords import *
 from model import summarize_event, mode
 from helpers import extract_emails, extract_phone_number, get_image_data_url, send_whatsapp_message, get_voice_data_url
 from auth import verify_auth_token_link, verify_oauth_connection, save_token, get_credentials, generate_auth_link
@@ -82,6 +83,7 @@ def oauth_callback():
 def receive_whatsapp():
     try:
         incoming_msg = request.values.get("Body", "").strip()
+        lower_incoming_msg = incoming_msg.lower()
         record_user_id = request.values.get("From", "").strip()
         user_id = extract_phone_number(record_user_id)
         media_url = request.form.get("MediaUrl0")
@@ -115,8 +117,8 @@ def receive_whatsapp():
             print(f"########### ERROR initial checkings: {e}", flush=True)
 
         try:
-            if incoming_msg.startswith("authenticate"):
-                authenticate_args = incoming_msg.split("authenticate")
+            if lower_incoming_msg.startswith(authenticate_keyword):
+                authenticate_args = incoming_msg.split(authenticate_keyword)
                 
                 if len(authenticate_args) > 1: # if authenticate <email>
                     user_email = extract_emails(authenticate_args)
@@ -150,13 +152,13 @@ def receive_whatsapp():
                     resp.message("Your email is pending for whitelisting. We will get back to you in 24h or less. For any questions, reach out to admin at galuh.adika@gmail.com.")
                     return str(resp)
 
-            elif incoming_msg == "authenticate test":
+            elif lower_incoming_msg == "authenticate test":
                 is_test = True
                 use_test_account(user_id)
                 resp.message(using_test_calendar)
                 return str(resp)
             
-            elif incoming_msg.startswith(WHITELIST_KEYWORD):
+            elif lower_incoming_msg.startswith(WHITELIST_KEYWORD):
                 email = incoming_msg.split(" ")[1]
                 user_number = update_user_whitelist_status(email, True)
                 if user_number:
@@ -165,7 +167,8 @@ def receive_whatsapp():
                         auth_link = generate_auth_link(user_number)
                         instruction_text = f"✅ Your email {email} has been whitelisted. You can now connect your Google Calendar.\n\nClick to connect your Google Calendar:\n{auth_link}"
                         send_whatsapp_message(whatsapp_number, instruction_text)
-                        update_send_whitelisted_message_status(email)
+                        send_whatsapp_message(ADMIN_NUMBER, f"email {email} has been whitelisted and user {user_number} has been notified.")
+                        update_send_whitelisted_message_status(user_number)
                     except Exception as e:
                         print(f"########### Error sending whitelisted success message: {str(e)}", flush=True)                    
 

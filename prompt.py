@@ -1,3 +1,5 @@
+import re
+
 def prompt_init(input, today, timezone=None, event_draft=None, latest_conversations=None):
     is_draft = bool(event_draft and event_draft['status'] == 'draft')
 
@@ -29,6 +31,15 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
 
     modify_timezone_draft = modify_draft_tz if is_draft else process_tz_inquiry
 
+    only_email = re.compile(r"^[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+$")
+    is_only_email = only_email.match(input).group(1) if only_email.match(input) else None
+
+    authenticate_instruction = f'''
+    If input ONLY contains email address and does not relate to an event detail or draft, you will ask whether user intends to authenticate their email to connect their calendar, and respond with "If you wish to connect your own calendar, please type authenticate followed by your email, for example: _authenticate {{the-email-that-the-user-just-inputted}}_.
+    '''
+
+    is_only_email_prompt = authenticate_instruction if is_only_email else ''
+
     PROMPT = f'''
     You are a scheduler assistant. Your main task is to help manage user's schedule. 
     The current date is {today}, and the default timezone is 'Asia/Jakarta' if {timezone} is not provided. 
@@ -49,6 +60,7 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
     - If you are unable to contextualize the request, respond with "Sorry, I couldn't understand your request or the session was reset. Please provide more details.", except when it's a general queries or greetings, then politely answer.
     - If user does not provide year, assume the year is the current year based on {today}.
     - When processing user's input, consider synonyms or abbreviations of the input fields, for example "participants" can be "attendees", "guests", "people", etc.
+    {is_only_email_prompt}
 
     If input contains timezone or location:
     - {modify_timezone_draft}  
