@@ -50,6 +50,18 @@ def privacy():
         </html>
         """, content=html_content)
 
+@app.route("/contact")
+def contact():
+    with open("docs/contact.md", "r", encoding="utf-8") as f:
+        md_content = f.read()
+        html_content = markdown.markdown(md_content)
+        return render_template_string("""
+        <html>
+        <head><title>Contact Us</title></head>
+        <body>{{ content|safe }}</body>
+        </html>
+        """, content=html_content)
+    
 @app.route("/auth")
 def auth():
     try:
