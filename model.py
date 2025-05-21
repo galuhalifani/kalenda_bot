@@ -141,7 +141,7 @@ def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice
         except Exception as e:
             print(f"########### Error sending loading message: {str(e)}", flush=True)
         try:
-            text_reply = save_event_to_draft(answer, user_id)
+            text_reply = save_event_to_draft(answer, user_id, is_test)
             print(f"########### Replying event draft: {text_reply}", flush=True)
             return text_reply
         except Exception as e:

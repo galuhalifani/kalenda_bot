@@ -274,7 +274,7 @@ def update_event_draft(user_id, new_draft):
         })
         return session_memories[-1]['latest_event_draft']
 
-def save_event_to_draft(instruction, user_id):
+def save_event_to_draft(instruction, user_id, is_test=False):
     print(f"########### save_event_to_draft: {instruction}", flush=True)
 
     json_str_raw = instruction.split('draft_event:')[1].strip()
@@ -325,6 +325,8 @@ def save_event_to_draft(instruction, user_id):
         num_counter += 1
         indent = ' ' * 4 if num_counter > 5 else ''
         text_reply += f"{indent}{num_counter}. *Event Creation Updates:* To be sent to participants\n"
+    if is_test:
+        text_reply += f"\n🔧 You are now using our shared test calendar.\n"
 
     update_event_draft(user_id, event_details)
 
