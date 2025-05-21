@@ -276,7 +276,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=port, debug=True)
 
 @app.route('/testwebhook', methods=['POST'])
-def receive_whatsapp():
+def receive_whatsapp_test():
     try:
         incoming_msg = request.values.get("Body", "").strip()
         lower_incoming_msg = incoming_msg.lower()
