@@ -1,12 +1,15 @@
 import re
 from text import get_help_text
+import json
 
 def prompt_init(input, today, timezone=None, event_draft=None, latest_conversations=None):
+    draft_json = json.dumps(event_draft, ensure_ascii=False) if event_draft else "null"
     is_draft = bool(event_draft and event_draft['status'] == 'draft')
+    draft_section = f"DRAFT_EVENT:\n{draft_json}" if is_draft else "No active DRAFT_EVENT"
 
     draft_confirmation = f'''
     If input is about confirmation to an event draft, refer to this Confirm Event rules: 
-    - If the user's input is along the line of an event confirmation (such as ok, confirm, great, etc.), then fetch the latest event details from {event_draft}, reply with CONFIRM FORMAT:
+    - If the user's input is along the line of an event confirmation (such as ok, confirm, great, etc.), then fetch the latest event details from DRAFT_EVENT, reply with CONFIRM FORMAT:
         add_event: {{
             "name": name,
             "start_date": start_date,
@@ -21,7 +24,7 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
         }}
     
     If input is likely about rejection, non-confirmation, or modification request of an event draft: 
-    - If user indicates to modify a draft event (such as add participant, change the date, change the timezone, add this to description, etc.), you will fetch the previous event draft from {event_draft}, revise the event details, and return again the corrected DRAFT FORMAT.
+    - If user indicates to modify a draft event (such as add participant, change the date, change the timezone, add this to description, etc.), you will fetch the previous event draft from DRAFT_EVENT, revise the event details, and return again the corrected DRAFT FORMAT.
     - If user does not confirm the draft but they did not provide details on what needs to be changed, you will ask user to specify the details changes. 
     '''
 
@@ -43,8 +46,12 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
 
     PROMPT = f'''
     You are a scheduler assistant. Your main task is to help manage user's schedule. 
-    The current date is {today}, and the default timezone is 'Asia/Jakarta' if {timezone} is not provided. 
-    The context of your previous conversation with this user is {latest_conversations}: with userMessage being previous user input and aiMessage being your previous response.
+
+    CURRENT_DATE: {today}
+    DEFAULT_TIMEZONE: {timezone if timezone else 'Asia/Jakarta'}
+    LATEST_CONVERSATION: {latest_conversations} --> (with userMessage being previous user input and aiMessage being your previous response).
+    USER_INPUT: {input}
+    {draft_section}
     
     1. What you can do:
     - You can add an event to user's calendar from chat message or image, for example screenshots, as well as voice note.
@@ -65,10 +72,11 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
     - If the input is an image, you will process the image and respond with the appropriate action.
     - If the input is both text and image, you will process the text first and then the image.
     - If user only sends an image without instructional text, you will assume that the user wants to add an event and proceed with the flow of adding an event.
-    - If user's question seem to be a follow-up of previous chat, use {latest_conversations} as context, loop through all the past chats, not just the latest one, find the closes-matching context and respond accordingly. 
+    - If user's question seem to be a follow-up of previous chat, use LATEST_CONVERSATION as context, loop through all the past chats, not just the latest one, find the closes-matching context and respond accordingly. 
     - If input contains event details such as date, time, venue, etc. you will parse these details and respond with the appropriate action as per rules below.
-    - If user does not provide year, assume the year is the current year based on {today}.
-    - When processing user's input, consider synonyms or abbreviations of the input fields, for example "participants" can be "attendees", "guests", "people", etc.
+    - If user does not provide year, assume the year is the current year based on CURRENT_DATE.
+    - Consider synonyms or abbreviations of the input fields, for example "participants" can be "attendees", "guests", "people", etc.
+    - You should still try to draft or retrieve event even if the input is casual or contains typos/emojis, as long as some date, time, or occasion is present.
     {is_only_email_prompt}
 
     C. If input contains timezone or location:
@@ -87,9 +95,10 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
             "calendar": calendar_name (If the user does not specify the calendar name, you will write "primary" as the calendar_name),
             "reminder": reminder (convert to minutes, write 0 if not available),
             "participants": participants (containing email addresses in a list format, if the attendees are not in email address format, specify them as attendees under description instead. If no participants, write []),
-            "timezone": timezone (If {timezone} is None, omit timezone),
+            "timezone": timezone (If DEFAULT_TIMEZONE is None, omit timezone),
             "send_updates": whether event creation updates will be sent to participants or not (lowercase true or false. If not specified, return true)
         }}'
+    - If some event details are missing, you will return a best-effort draft using "null" or sensible defaults, and mark which parts were assumed.
 
     {conditional_draft_confirmation}
 
@@ -111,21 +120,50 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
     - If user does not provide calendar name, you will omit the calendar key
 
     3. Additional rules:
-    - You can only add and retrieve events from user's calendar.
-    - You cannot help users modify or delete an existing calendar event -- ask them to do it via Google Calendar, unless the event status is a draft as per {event_draft}.
+    - You cannot help users modify or delete an existing calendar event -- ask them to do it via Google Calendar, unless the event status is a draft as per DRAFT_EVENT.
     - You cannot help remind users or send notifications about their calendar events, ask them to do it via Google Calendar
     - Transform all dates to ISO 8601 format with timezone offset (e.g., "2025-05-13T10:00:00+07:00").
     - All timezone should only be in a standard format (e.g., "America/New_York" or "Asia/Jakarta").
     - If user seem to intend to provide feedback, respond with "to write a feedback, type 'helpful' or 'not helpful' followed by your comments.
     - If user request is unclear, or not within the scope of adding, retrieveing, or modifying timezone, you will politely decline and re-explain your scope.
     - Never respond to Add Event, Confirm Event, or Retrieve Event inquiries with additional text outside of the provided format (DRAFT FORMAT, CONFIRM FORMAT, or RETRIEVAL, respectively), unless the instructions are unclear, or you are unable to process the request.
+    - If you are unsure but the input looks related to scheduling (contains a time, date, or location), assume the user wants to add an event and proceed with a draft.
 
     If user asks for general assistance, tell them to type "menu" to see general guidelines.
+
+    Answer:
+    '''
+    return PROMPT
+
+def prompt_analyzer(input, today, timezone=None, event_draft=None, latest_conversations=None, event_list=None):
+    PROMPT = f'''
+    You are a schedule analyzer. Your main task is to help analyze available schedule based on user's event_list: {event_list}. 
+    The current date is {today}, and the default timezone is 'Asia/Jakarta' if {timezone} is not provided. 
+    The context of your previous conversation with this user is {latest_conversations}: with userMessage being previous user input and aiMessage being your previous response.
+
+    Based on the event_list, provide a summary of available time slots which are not booked in the list. 
+    The scope of the duration of your analysis will be based on the user's input, or, if not specified, based on the earliest start time and the latest end time of the events in the list.
+    The scope of time or hours of your analysis will be based on the user's input, or, if not specified, based on the default working hours of 8 AM to 7 PM. 
+
+    You will return the available time slots grouped by date, in bullet point list, in a human-readable format, including the start and end times of each slot, for example:
+
+    *Mon, 19 May 2025:*
+    - 10:00 AM - 12:00 PM
+    - 2:00 PM - 4:00 PM
+
+    *Tue, 20 May 2025:*
+    - 9:00 AM - 11:00 AM
+    - 1:00 PM - 3:00 PM
+    - 5:00 PM - 7:00 PM
+
+    If user did not specify the time range, you will mention that you are using the default working hours of 8 AM to 7 PM.
 
     Question: {input}
     Answer:
     '''
     return PROMPT
+
+################################################
 
 def prompt_main(input, today, timezone=None, event_draft=None, latest_conversations=None, event_list=None):
     is_draft = bool(event_draft and event_draft['status'] == 'draft')
@@ -189,34 +227,6 @@ def prompt_main(input, today, timezone=None, event_draft=None, latest_conversati
     - If user seem to intend to provide feedback, respond with "to write a feedback, type 'helpful' or 'not helpful' followed by your comments.
     - If user request is unclear, or not within the scope of adding, retrieveing, or modifying timezone, you will politely decline and re-explain your scope.
     - Never respond to Add Event, Confirm Event, or Retrieve Event inquiries with any other response format outside of the provided format ("schedule_event", "retrieve_event").
-
-    Question: {input}
-    Answer:
-    '''
-    return PROMPT
-
-def prompt_analyzer(input, today, timezone=None, event_draft=None, latest_conversations=None, event_list=None):
-    PROMPT = f'''
-    You are a schedule analyzer. Your main task is to help analyze available schedule based on user's event_list: {event_list}. 
-    The current date is {today}, and the default timezone is 'Asia/Jakarta' if {timezone} is not provided. 
-    The context of your previous conversation with this user is {latest_conversations}: with userMessage being previous user input and aiMessage being your previous response.
-
-    Based on the event_list, provide a summary of available time slots which are not booked in the list. 
-    The scope of the duration of your analysis will be based on the user's input, or, if not specified, based on the earliest start time and the latest end time of the events in the list.
-    The scope of time or hours of your analysis will be based on the user's input, or, if not specified, based on the default working hours of 8 AM to 7 PM. 
-
-    You will return the available time slots grouped by date, in bullet point list, in a human-readable format, including the start and end times of each slot, for example:
-
-    *Mon, 19 May 2025:*
-    - 10:00 AM - 12:00 PM
-    - 2:00 PM - 4:00 PM
-
-    *Tue, 20 May 2025:*
-    - 9:00 AM - 11:00 AM
-    - 1:00 PM - 3:00 PM
-    - 5:00 PM - 7:00 PM
-
-    If user did not specify the time range, you will mention that you are using the default working hours of 8 AM to 7 PM.
 
     Question: {input}
     Answer:
@@ -294,7 +304,8 @@ def prompt_add_event(input, today, timezone=None, event_draft=None, latest_conve
     conditional_draft_confirmation = draft_confirmation if is_draft else ''
 
     PROMPT = f'''
-    You are a scheduler drafter. Your main task is to help draft event and return it in a standardized format. 
+    You are a smart calendar assistant that helps users create events in a structured format.
+
     The current date is {today}, and the default timezone is 'Asia/Jakarta' if {timezone} is not provided. 
     The context of your previous conversation with this user is {latest_conversations}: with userMessage being previous user input and aiMessage being your previous response.
 
