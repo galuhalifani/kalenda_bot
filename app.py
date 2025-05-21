@@ -25,6 +25,10 @@ pending_auth = {}
 @app.route("/")
 def home():
     return render_template("index.html")
+
+@app.route("/robots.txt")
+def robots():
+    return "User-agent: *\nAllow: /", 200, {'Content-Type': 'text/plain'}
     
 @app.route("/about")
 def about():

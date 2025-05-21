@@ -267,27 +267,24 @@ def revoke_access_command(resp, user_id):
         email_collection.delete_one(
             {"email": user_email})
         
-        user_collection.update_one(
-            {"user_id": user_id},
-            {"$set": {
-                "is_email_whitelisted": False,
-                "whitelisted_message_sent": False,
-                "test_calendar_message": True,
-                "is_using_test_account": True
-            },
-            "$unset": {
-                "email": ""
-            }}
-        )
+    user_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "is_email_whitelisted": False,
+            "whitelisted_message_sent": False,
+            "test_calendar_message": True,
+            "is_using_test_account": True
+        },
+        "$unset": {
+            "email": ""
+        }}
+    )
 
-        tokens_collection.delete_one(
-            {"user_id": user_id}
-        )
-        resp.message("✅ Your access has been revoked. You are now using our shared test calendar. You can re-authenticate by typing 'authenticate'")
-        return str(resp)
-    else:
-        resp.message("You are not connected to any email account. To connect and get whitelisted, please type 'authenticate <your-email>'")
-        return str(resp)
+    tokens_collection.delete_one(
+        {"user_id": user_id}
+    )
+    resp.message("✅ Your access has been revoked. You are now using our shared test calendar. You can re-authenticate by typing 'authenticate'")
+    return str(resp)
     
 def add_pending_auth(user_id, state):
     try:
