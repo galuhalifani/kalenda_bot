@@ -120,7 +120,8 @@ def authenticate_command(incoming_msg, resp, user_id):
 
 def authenticate_only_command(resp, user_id):
     print(f"########### Authenticate only command for user: {user_id}", flush=True)
-    has_active_email = check_user_active_email(user_id)
+    # has_active_email = check_user_active_email(user_id)
+    has_active_email = True
     print(f"########### User {user_id} has active email: {has_active_email}", flush=True)
     if has_active_email:
         auth_link = generate_auth_link(user_id)

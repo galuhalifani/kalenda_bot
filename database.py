@@ -185,7 +185,7 @@ def add_user_whitelist_status(user_id, email):
         print(f"########### Adding user whitelist status: email: {email}", flush=True)
         email_collection.update_one(
             {"email": email},
-            {"$set": {"is_whitelisted": "Pending"}},
+            {"$set": {"user_id": user_id, "is_whitelisted": "Pending"}},
             upsert=True
         )
         user_collection.update_one(
