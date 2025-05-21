@@ -119,6 +119,7 @@ def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice
     if is_main_answer_string and 'schedule_event' in main_answer.strip():
         print(f"########### Invoking add_event LLM: {main_answer}", flush=True)
         raw_answer = init_llm(user_id, input, 'add_event', image_data_url, user_timezone, voice_data_filename, None)
+        print(f"########### Raw add event answer: {raw_answer}", flush=True)
         answer = clean_instruction_block(raw_answer)
         is_answer_string = isinstance(answer, str)
 
