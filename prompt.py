@@ -186,7 +186,7 @@ def prompt_finder(input, today, timezone=None, event_draft=None, latest_conversa
     If there are multiple events with similar likelihood, you will return those events and mention that you are unsure which event the user is referring to, and that you are presenting some likely options.
     If there are no events that match the user's input or with low likelihood, you will mention that you are unable to find any events that match the user's input but return one or more events with the highest likelihood.
     
-    You will return the event details in bullet point list and human-readable format, which includes the event name, start and end times, location, description, and participants, unless user asks for more details.
+    You will return the event details in bullet point list and human-readable whatsapp-friendly format, which includes the event name, start and end times, location, description, and participants, unless user asks for more details.
     If the user input looks like a follow-up, then you will respond to that follow-up question accordingly or re-do the search based on the user's follow-up input.
 
     Question: {input}
