@@ -157,10 +157,12 @@ def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice
     elif parsed_answer == 'retrieve_event':
         print(f"########### Retrieving events: {answer}", flush=True)
         try:
-            loading_message = "Fetching your events..."
+            is_using_test_calendar_remark = f"_(you are using our shared test calendar)_"
+            loading_message = f"Fetching your events...{is_using_test_calendar_remark if is_test else ''}"
             send_whatsapp_message(f'{whatsappNum}', loading_message, twilio_number)
         except Exception as e:
             print(f"########### Error sending loading message: {str(e)}", flush=True)
+
         try:
             events = get_upcoming_events(answer, user_id, is_test)
             print(f"########### All list of Events: {events}", flush=True)
