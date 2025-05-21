@@ -1,4 +1,5 @@
 import re
+from text import get_help_text
 
 def prompt_init(input, today, timezone=None, event_draft=None, latest_conversations=None):
     is_draft = bool(event_draft and event_draft['status'] == 'draft')
@@ -178,7 +179,7 @@ def prompt_main(input, today, timezone=None, event_draft=None, latest_conversati
     - If user asks what you can do, you will respond summarizing your capabilities and give example commands, such as sending a screenshot of an event, forwarding an event via chat, or adding event via voice note to add an event; or typing "show me what I have today" to retrieve today's events.
     - If user asks about how to connect to their own calendar, you explain that if they previously have had their email whitelisted, they can type "authenticate" to get the link to connect to their g-cal. Otherwise, their e-mail need to be whitelisted first by typing 'authenticate <their-google-calendar-email-address>'
     - If user asks about revoking calendar access to the bot, you will explain that they can do so by typing "revoke access"
-    - If user asks for general assistance, tell them to type "menu" to see general guidelines.
+    - If user asks for general assistance or have specific question related to how to use your features, refer to {get_help_text()} and provide the relevant help, or tell them to visit kalenda.id/guide to see general guidelines.
 
     3. If input contains timezone or location:
     - {modify_timezone_draft}  
