@@ -70,7 +70,7 @@ def init_llm(user_id, input, prompt_type, image_data_url=None, user_timezone=Non
         check_input_not_none(input, image_data_url)
 
         if prompt_type == 'main':   
-            prompt = prompt_init(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
+            prompt = prompt_main(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
         elif prompt_type == 'schedule_analyzer':
             prompt = prompt_analyzer(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations, other_files)
         elif prompt_type == 'add_event':
@@ -117,6 +117,7 @@ def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice
     whatsappNum = f'whatsapp:+{user_id}'
 
     if is_main_answer_string and 'schedule_event' in main_answer.strip():
+        print(f"########### Invoking add_event LLM: {main_answer}", flush=True)
         raw_answer = init_llm(user_id, input, 'add_event', image_data_url, user_timezone, voice_data_filename, None)
         answer = clean_instruction_block(raw_answer)
         is_answer_string = isinstance(answer, str)
@@ -167,6 +168,7 @@ def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice
                 return "Sorry, I could not set your timezone. Please try again."
             
     elif is_main_answer_string and 'retrieve_event' in main_answer.strip():
+        print(f"########### Invoking retrieve_event LLM: {main_answer}", flush=True)
         raw_answer = init_llm(user_id, input, 'retrieve', image_data_url, user_timezone, voice_data_filename, None)
         answer = clean_instruction_block(raw_answer)
         is_answer_string = isinstance(answer, str)
