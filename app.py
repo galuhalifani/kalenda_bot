@@ -58,7 +58,7 @@ def auth():
     try:
         user_id = request.args.get("user_id")
         token = request.args.get("token")
-        client_type = request.args.get("client_type")
+        client_type = request.args.get("client")
         verification = verify_auth_token_link(user_id, token)
 
         print(f"########### Auth Verification result: {verification}", flush=True)
