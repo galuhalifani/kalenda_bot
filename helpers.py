@@ -10,6 +10,8 @@ from twilio.rest import Client as TwilioClient
 import time
 import uuid
 import json
+from flask import render_template_string, render_template
+import markdown
 
 def trim_reply(reply_text):
     max_length=1400
@@ -192,3 +194,14 @@ def parse_llm_answer(answer):
     except Exception as e:
         print(f"########### Error parsing LLM answer: {e}", flush=True)
         return None
+    
+def render_markdown_page(filepath, title):
+    with open(filepath, "r", encoding="utf-8") as f:
+        md_content = f.read()
+        html_content = markdown.markdown(md_content)
+    return render_template_string("""
+    <html>
+    <head><title>{{ title }}</title></head>
+    <body>{{ content|safe }}</body>
+    </html>
+    """, title=title, content=html_content)

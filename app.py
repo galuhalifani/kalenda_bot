@@ -3,20 +3,19 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from flask import Flask, request, jsonify, redirect, session, render_template_string, render_template
+from flask import Flask, request, jsonify, redirect, session, render_template
 from google_auth_oauthlib.flow import Flow
 from twilio.twiml.messaging_response import MessagingResponse
 from creds import *
 from keywords import *
 from model import invoke_model, mode
-from helpers import extract_emails, extract_phone_number, get_image_data_url, send_whatsapp_message, get_voice_data_url, trim_reply
+from helpers import render_markdown_page, extract_emails, extract_phone_number, get_image_data_url, send_whatsapp_message, get_voice_data_url, trim_reply
 from auth import verify_auth_token_link, verify_oauth_connection, save_token, get_credentials, generate_auth_link, authenticate_command, authenticate_only_command, whitelist_admin_command
-from database import add_pending_auth, get_pending_auth, check_user, check_user_balance, deduct_chat_balance, use_test_account, check_user_active_email, update_user_whitelist_status, update_send_whitelisted_message_status, add_user_whitelist_status, update_send_test_calendar_message, revoke_access_command
+from database import save_feedback, add_pending_auth, get_pending_auth, check_user, check_user_balance, deduct_chat_balance, use_test_account, check_user_active_email, update_user_whitelist_status, update_send_whitelisted_message_status, add_user_whitelist_status, update_send_test_calendar_message, revoke_access_command
 from text import greeting, using_test_calendar, get_help_text
 from session_memory import delete_user_memory, add_user_memory
 import secrets
 from flask import request
-import markdown
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", secrets.token_hex(16))
@@ -32,63 +31,27 @@ def robots():
     
 @app.route("/about")
 def about():
-    with open("docs/index.md", "r", encoding="utf-8") as f:
-        md_content = f.read()
-        html_content = markdown.markdown(md_content)
-        return render_template_string("""
-        <html>
-        <head><title>About</title></head>
-        <body>{{ content|safe }}</body>
-        </html>
-        """, content=html_content)
+    return render_markdown_page("docs/index.md", "About")
 
 @app.route("/privacy")
 def privacy():
-    with open("docs/privacy.md", "r", encoding="utf-8") as f:
-        md_content = f.read()
-        html_content = markdown.markdown(md_content)
-        return render_template_string("""
-        <html>
-        <head><title>Privacy Policy</title></head>
-        <body>{{ content|safe }}</body>
-        </html>
-        """, content=html_content)
+    return render_markdown_page("docs/privacy.md", "Privacy Policy")
 
 @app.route("/contact")
 def contact():
-    with open("docs/contact.md", "r", encoding="utf-8") as f:
-        md_content = f.read()
-        html_content = markdown.markdown(md_content)
-        return render_template_string("""
-        <html>
-        <head><title>Contact Us</title></head>
-        <body>{{ content|safe }}</body>
-        </html>
-        """, content=html_content)
+    return render_markdown_page("docs/contact.md", "Contact Us")
 
 @app.route("/guide")
 def guide():
-    with open("docs/user_guide.md", "r", encoding="utf-8") as f:
-        md_content = f.read()
-        html_content = markdown.markdown(md_content)
-        return render_template_string("""
-        <html>
-        <head><title>User Guide</title></head>
-        <body>{{ content|safe }}</body>
-        </html>
-        """, content=html_content)
+    return render_markdown_page("docs/user_guide.md", "User Guide")
 
 @app.route("/terms")
 def terms():
-    with open("docs/terms.md", "r", encoding="utf-8") as f:
-        md_content = f.read()
-        html_content = markdown.markdown(md_content)
-        return render_template_string("""
-        <html>
-        <head><title>Terms of Service</title></head>
-        <body>{{ content|safe }}</body>
-        </html>
-        """, content=html_content)
+    return render_markdown_page("docs/terms.md", "Terms of Service")
+    
+@app.route("/feedback")
+def feedback():
+    return render_template("feedback.html")
         
 @app.route("/auth")
 def auth():
@@ -153,7 +116,7 @@ def oauth_callback():
         return "✅ Google Calendar connected! You can now use the bot."
     except Exception as e:
         print(f"########### ERROR in oauth_callback: {e}", flush=True)
-        if e == "(access_denied)":
+        if "access_denied" in str(e):
             return "❌ Access not provided. Please allow access for Kalenda and try again."
         else:
             return "❌ Unable to authorize connection or your session has expired. Please try again. Type 'authenticate' to generate a new link."
@@ -170,11 +133,14 @@ def receive_whatsapp():
         is_authenticating = lower_incoming_msg.startswith(authenticate_keyword)
         is_authenticating_test = lower_incoming_msg == "authenticate test"
         is_whitelisting = lower_incoming_msg.startswith(WHITELIST_KEYWORD)
+        is_feedback = lower_incoming_msg.startswith("feedback")
         is_revoking = lower_incoming_msg.startswith(revoke_access_keyword)
         is_audio = False
         is_image = False
         is_using_whitelisting = False
         twilio_number = TWILIO_PHONE_NUMBER_TEST if is_using_whitelisting else TWILIO_PHONE_NUMBER
+        is_balance_available = True
+        user = {}
 
         if content_type:
             is_audio = bool(media_url) and content_type.startswith("audio/")
@@ -192,13 +158,7 @@ def receive_whatsapp():
                     send_whatsapp_message(record_user_id, greeting, twilio_number)
                 except Exception as e:
                     print(f"########### ERROR sending greeting: {e}", flush=True)
-
             is_balance_available = check_user_balance(user)
-
-            if not is_balance_available:
-                reply = "Sorry, you have reached your daily conversation limit. You can start a new conversation tomorrow."
-                resp.message(reply)
-                return str(resp)
         except Exception as e:
             print(f"########### ERROR initial checkings: {e}", flush=True)
 
@@ -213,6 +173,14 @@ def receive_whatsapp():
                 help_text = get_help_text()
                 resp.message(help_text)
                 return str(resp)
+            
+            elif is_feedback:
+                try:
+                    save_feedback(incoming_msg, user_id)
+                except Exception as e:
+                    print(f"########### ERROR saving feedback. error: {e}, feedback: {incoming_msg}", flush=True)
+                resp.message("Thank you, we have received your feedback!\n\n")
+                return str(resp)
 
             else:
                 oauth_connection_verification = verify_oauth_connection(user_id)
@@ -225,6 +193,11 @@ def receive_whatsapp():
         except Exception as e:
             resp.message("Error during authentication. Please try again.")
             print(f"########### ERROR in authentication: {e}", flush=True)
+            return str(resp)
+        
+        if not is_balance_available:
+            reply = "Sorry, you have reached your daily conversation limit. You can start a new conversation tomorrow."
+            resp.message(reply)
             return str(resp)
     
         image_data_url = get_image_data_url(media_url, content_type) if is_image else None
@@ -247,7 +220,7 @@ def receive_whatsapp():
 
         print(f"########### End process {user_id}. Response: {reply_text}", flush=True)
 
-        deduct_chat_balance(user['user_details'], user_id)
+        deduct_chat_balance(user.get('user_details', {}) if user else {}, user_id)
         add_user_memory(user_id, incoming_msg, reply_text)
 
         return str(resp)
@@ -270,11 +243,14 @@ def receive_whatsapp_test():
         is_authenticating = lower_incoming_msg.startswith(authenticate_keyword)
         is_authenticating_test = lower_incoming_msg == "authenticate test"
         is_whitelisting = lower_incoming_msg.startswith(WHITELIST_KEYWORD)
+        is_feedback = lower_incoming_msg.startswith("feedback")
         is_revoking = lower_incoming_msg.startswith(revoke_access_keyword)
         is_audio = False
         is_image = False
         is_using_whitelisting = True
         twilio_number = TWILIO_PHONE_NUMBER_TEST if is_using_whitelisting else TWILIO_PHONE_NUMBER
+        is_balance_available = True
+        user = {}
 
         if content_type:
             is_audio = bool(media_url) and content_type.startswith("audio/")
@@ -292,13 +268,7 @@ def receive_whatsapp_test():
                     send_whatsapp_message(record_user_id, greeting, twilio_number)
                 except Exception as e:
                     print(f"########### ERROR sending greeting: {e}", flush=True)
-
             is_balance_available = check_user_balance(user)
-
-            if not is_balance_available:
-                reply = "Sorry, you have reached your daily conversation limit. You can start a new conversation tomorrow."
-                resp.message(reply)
-                return str(resp)
         except Exception as e:
             print(f"########### ERROR initial checkings: {e}", flush=True)
 
@@ -328,7 +298,15 @@ def receive_whatsapp_test():
                 help_text = get_help_text()
                 resp.message(help_text)
                 return str(resp)
-
+            
+            elif is_feedback:
+                try:
+                    save_feedback(incoming_msg, user_id)
+                except Exception as e:
+                    print(f"########### ERROR saving feedback. error: {e}, feedback: {incoming_msg}", flush=True)
+                resp.message("Thank you, we have received your feedback!\n\n")
+                return str(resp)
+            
             else:
                 oauth_connection_verification = verify_oauth_connection(user_id)
                 if oauth_connection_verification == False:
@@ -342,6 +320,11 @@ def receive_whatsapp_test():
             print(f"########### ERROR in authentication: {e}", flush=True)
             return str(resp)
     
+        if not is_balance_available:
+            reply = "Sorry, you have reached your daily conversation limit. You can start a new conversation tomorrow."
+            resp.message(reply)
+            return str(resp)
+            
         image_data_url = get_image_data_url(media_url, content_type) if is_image else None
         voice_data_filename = get_voice_data_url(media_url, content_type, user_id) if is_audio else None
 
@@ -362,7 +345,7 @@ def receive_whatsapp_test():
 
         print(f"########### End process {user_id}. Response: {reply_text}", flush=True)
 
-        deduct_chat_balance(user['user_details'], user_id)
+        deduct_chat_balance(user.get('user_details', {}) if user else {}, user_id)
         add_user_memory(user_id, incoming_msg, reply_text)
 
         return str(resp)

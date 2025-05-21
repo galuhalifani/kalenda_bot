@@ -1,6 +1,7 @@
 greeting = (
     "👋 Hi! Kalenda here -- I'm here to help make adding calendar event faster for you. Please take time to read our privacy policy: kalenda.id/privacy, and our guide: kalenda.id/guide\n\n You can try typing _what do I have today_ or _what is my availability tomorrow_'\n\n"
     "Or to add a new event, just text or forward me your event via chat, via a voice note, or even screenshot -- as simple as that!\n\n"
+    "To submit a feedback, just type _feedback_ followed by your comments or fill in the form: kalenda.id/feedback\n\n"
 )
 
 using_test_calendar = (
@@ -66,8 +67,10 @@ def get_help_text(client_type):
             "     - type `authenticate` to connect to your calendar\n"
             "     - type `revoke access` to revoke all access\n\n"
             "*DO NOT* include any personal info when using shared calendar:\n\n"
-            "*Need help with editing/deleting events in shared calendar?*\n"
-            "Email: kalenda.bot@gmail.com\n"
+            "❓*Need help with deleting events in shared calendar or other requests?*\n"
+            "Email: kalenda.bot@gmail.com\n\n"
+            "🗨️*Any feedback or bug reports?*\n"
+            "Type `feedback` followed by your comments or fill in the form: kalenda.id/feedback\n"
         )
     else:
         return (
@@ -90,6 +93,8 @@ def get_help_text(client_type):
             "     - type `authenticate` to connect to your calendar\n"
             "     - type `revoke access` to revoke all access\n\n"
             "*DO NOT* include any personal info when using shared calendar:\n\n"
-            "*Need help with editing/deleting events in shared calendar?*\n"
-            "Email: kalenda.bot@gmail.com\n"
+            "❓*Need help with deleting events in shared calendar or other requests?*\n"
+            "Email: kalenda.bot@gmail.com\n\n"
+            "🗨️*Any feedback or bug reports?*\n"
+            "Type `feedback` followed by your comments or fill in the form: kalenda.id/feedback\n"
         )

@@ -3,6 +3,7 @@ from creds import *
 from datetime import datetime, timedelta, timezone as tzn
 from helpers import send_whatsapp_message
 from text import using_test_calendar, using_test_calendar_whitelist
+from session_memory import get_user_memory
 
 def init_mongodb():
     try:
@@ -20,12 +21,14 @@ if client:
     user_collection = db['user']
     tokens_collection = db['tokens']
     email_collection = db['email']
+    feedback_collection = db['feedback']
     pending_auth_collection = db['pending_auth']
     pending_auth_collection.create_index("created_at", expireAfterSeconds=900)
 else:
     user_collection = None
     tokens_collection = None
     email_collection = None
+    feedback_collection = None
     pending_auth_collection = None
 
 def check_user(user_id):
@@ -80,13 +83,17 @@ def deduct_chat_balance(user, user_id):
         return False
 
 def check_user_balance(user):
-    balance = user["chat_balance"]
-    print(f'########## check_user_balance: {user}, type: {user["type"]}, balance: {balance}')
-    if user["type"] == 'regular' and balance > 0:
-        return True
-    elif user["type"] == 'unlimited':
-        return True
+    if user:
+        balance = user["chat_balance"]
+        print(f'########## check_user_balance: {user}, type: {user["type"]}, balance: {balance}')
+        if user["type"] == 'regular' and balance > 0:
+            return True
+        elif user["type"] == 'unlimited':
+            return True
+        else:
+            return False
     else:
+        print(f"########### User not found: {user}", flush=True)
         return False
     
 def check_timezone(user_id, cal_timezone=None):
@@ -310,3 +317,15 @@ def get_pending_auth(state):
     except Exception as e:
         print(f"Error getting pending auth for {state}: {e}", flush=True)
         return None
+    
+def save_feedback(feedback, user_id):
+    userMem = get_user_memory(user_id)
+    _, user_memory = userMem
+
+    feedback_collection.insert_one({
+        "user_id": user_id,
+        "feedback": feedback,
+        "context": user_memory,
+        "timestamp": datetime.now()
+    })
+    print(f"########### Feedback saved successfully", flush=True)

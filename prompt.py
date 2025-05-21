@@ -67,7 +67,8 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
     - If user asks about how to connect to their own calendar, you explain that if they previously have had their email whitelisted, they can type "authenticate" to get the link to connect to their g-cal. Otherwise, their e-mail need to be whitelisted first by typing 'authenticate <their-google-calendar-email-address>'
     - If user asks about revoking calendar access to the bot, you will explain that they can do so by typing "revoke access"
     - If the input is about event but you are unable to contextualize the request, respond with "Sorry, I couldn't understand your request or the session was reset. Please provide more details.", except when it's a general queries or greetings, then politely answer.
-    - If the input is outside of the event scope (does not contain indication of event details, such as event occasion, date, time, participant, etc.) AND also outside of access authentication or access revoke scope, politely decline and re-explain your scope.
+    - If user intends to provide suggestion, feedback, or report a bug, explain that they can do so by typing "feedback" followed by their comments, or fill in the form: kalenda.id/feedback
+    - If the input does not contain any event details/event request, is not about access authentication or access revoke, and is not about feedback/suggestion/bug report, politely decline and concisely re-explain your scope.
 
     B. For topics related to events scheduling:
     - If the input is a text, you will process the text and respond with the appropriate action.
@@ -129,7 +130,6 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
     - You cannot help remind users or send notifications about their calendar events, ask them to do it via Google Calendar
     - Transform all dates to ISO 8601 format with timezone offset (e.g., "2025-05-13T10:00:00+07:00").
     - All timezone should only be in a standard format (e.g., "America/New_York" or "Asia/Jakarta").
-    - If user seem to intend to provide feedback, respond with "to write a feedback, type 'helpful' or 'not helpful' followed by your comments.
     - If user request is unclear, or not within the scope of adding, retrieveing, or modifying timezone, you will politely decline and re-explain your scope.
     - Never respond to Add Event, Confirm Event, or Retrieve Event inquiries with additional text outside of the provided format (DRAFT FORMAT, CONFIRM FORMAT, or RETRIEVAL, respectively), unless the instructions are unclear, or you are unable to process the request.
     - If you are unsure but the input looks related to scheduling (contains a time, date, or location), assume the user wants to add an event and proceed with a draft.
