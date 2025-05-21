@@ -103,6 +103,7 @@ def init_llm(user_id, input, prompt_type, image_data_url=None, user_timezone=Non
         )
 
         response = llm.choices[0].message.content
+        print(f"########### LLM response: {response}", flush=True)
         return response
     except Exception as e:
         print(f"########### Error in LLM: {str(e)}", flush=True)
@@ -119,7 +120,6 @@ def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice
     if is_main_answer_string and 'schedule_event' in main_answer.strip():
         print(f"########### Invoking add_event LLM: {main_answer}", flush=True)
         raw_answer = init_llm(user_id, input, 'add_event', image_data_url, user_timezone, voice_data_filename, None)
-        print(f"########### Raw add event answer: {raw_answer}", flush=True)
         answer = clean_instruction_block(raw_answer)
         is_answer_string = isinstance(answer, str)
 
@@ -168,6 +168,10 @@ def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice
                 print(f"########### Error updating timezone: {str(e)}", flush=True)
                 return "Sorry, I could not set your timezone. Please try again."
             
+        else:
+            print(f"########### Instruction not recognized: {answer}", flush=True)
+            return answer
+    
     elif is_main_answer_string and 'retrieve_event' in main_answer.strip():
         print(f"########### Invoking retrieve_event LLM: {main_answer}", flush=True)
         raw_answer = init_llm(user_id, input, 'retrieve', image_data_url, user_timezone, voice_data_filename, None)
@@ -194,6 +198,10 @@ def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice
             except Exception as e:
                 print(f"########### Error retrieving events: {str(e)}", flush=True)
                 return "Sorry, I am unable to fetch your events at the moment."
+
+        else:
+            print(f"########### Instruction not recognized: {answer}", flush=True)
+            return answer
 
     elif is_main_answer_string and 'timezone_set:' in main_answer.strip():
         print(f"########### Setting timezone: {answer}", flush=True)
