@@ -12,7 +12,8 @@ using_test_calendar = (
 
 using_test_calendar_whitelist = (
     "🔧 You are now using our public test calendar.\n\n"
-    "If you wish to connect your own calendar, please type: _authenticate <your-google-email>_ \n\nfor example: _authenticate kalenda@gmail.com_. \n\nWe will add your email to the whitelist within 24 hours.\n\n"
+    "If you wish to connect your own calendar, please type: _authenticate <your-google-email>_ \n\nWe will add your email to the whitelist within 24 hours.\n\n"
+    "Only personal email with a valid google account is eligible to be whitelisted\n\n"
     "You can access and view the test calendar here:\n"
     "📅 https://calendar.google.com/calendar/embed?src=kalenda.bot%40gmail.com \n\n"
 )
