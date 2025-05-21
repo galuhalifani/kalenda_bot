@@ -22,9 +22,17 @@ def connect_to_calendar(auth_link, email):
         "🔐 Click to connect your Google Calendar:\n"
         f"{auth_link}\n\n"
         f"Choose your email, then click _continue_ to connect to your account\n\n"
-        f"You can only connect to the email that has been whitelisted ({email}). To connect to another calendar, type _authenticate <other-email-address>_\n\n"
         f"Please note that the link will expire in 24 hours. If you need a new link, just type _authenticate_.\n\n"
     )
+
+# def connect_to_calendar(auth_link, email):
+#     return (
+#         "🔐 Click to connect your Google Calendar:\n"
+#         f"{auth_link}\n\n"
+#         f"Choose your email, then click _continue_ to connect to your account\n\n"
+#         f"You can only connect to the email that has been whitelisted ({email}). To connect to another calendar, type _authenticate <other-email-address>_\n\n"
+#         f"Please note that the link will expire in 24 hours. If you need a new link, just type _authenticate_.\n\n"
+#     )
 
 def connect_to_calendar_confirmation(auth_link, email):
     return (
