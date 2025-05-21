@@ -1,6 +1,6 @@
 greeting = (
-    "👋 Hi! Kalenda here -- I'm here to help make adding calendar event faster for you. You can view today and tomorrow's events in the calendar, as well as add new events to the calendar'\n\n"
-    "To add event, you can type the event details via chat, send a voice note, or screenshot an event and forward it to me -- as simple as that!\n\n"
+    "👋 Hi! Kalenda here -- I'm here to help make adding calendar event faster for you. Please take time to read our privacy policy: kalenda.id/privacy, and our guide: kalenda.id/guide\n\n You can try typing _what do I have today_ or _what is my availability tomorrow_'\n\n"
+    "Or to add a new event, just text or forward me your event via chat, via a voice note, or even screenshot -- as simple as that!\n\n"
 )
 
 using_test_calendar = (

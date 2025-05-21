@@ -102,3 +102,17 @@ def delete_user_memory(user_id):
         else:
             print(f"########### Memory still valid for user: {user_id}", flush=True)
     return
+
+def get_latest_memory(user_id):
+    for memory in session_memories:
+        _, memory = get_user_memory(user_id)
+        if memory:
+            latest_draft = memory['latest_event_draft'] if memory['latest_event_draft'] else None
+            latest_draft_status = latest_draft['status'] if latest_draft else None
+            user_latest_event_draft = latest_draft if latest_draft_status == 'draft' else None
+            print(f"########### User latest event draft: {user_latest_event_draft}", flush=True)
+            latest_conversations = memory['latest_conversations'] if memory['latest_conversations'] else None
+            print(f"########### User latest conversations: {latest_conversations}", flush=True)
+            return latest_conversations, user_latest_event_draft
+    print(f"########### No memory found for user: {user_id}", flush=True)
+    return None, None

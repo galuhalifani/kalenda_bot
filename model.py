@@ -28,34 +28,35 @@ from database import user_collection, tokens_collection, check_user, check_timez
 from auth import decrypt_token, encrypt_token, save_token
 from helpers import clean_instruction_block, readable_date, clean_description, extract_phone_number, get_image_data_url, split_message,send_whatsapp_message, transcribe_audio, extract_json_block
 from calendar_service import get_user_calendar_timezone, get_calendar_service, save_event_to_draft, save_event_to_calendar, get_upcoming_events, update_event_draft, transform_events_to_text
-from session_memory import session_memories, get_user_memory, max_chat_stored
+from session_memory import session_memories, get_user_memory, max_chat_stored, get_latest_memory
 from prompt import prompt_init, prompt_analyzer, prompt_add_event, prompt_retrieve, prompt_main
 from text import get_help_text
 
 if mode == 'test':
-    os.environ["SSL_CERT_FILE"] = r"C:\Users\galuh\miniconda\envs\py10\Library\ssl\cacert.pem"
+    os.environ["SSL_CERT_FILE"] = os.environ.get("SSL_CERT_FILE")
+
+def init_openai():
+    try:
+        client = OpenAI()
+        print("✅ OpenAI client initialized", flush=True)
+        return client
+    except Exception as e:
+        print(f"❌ Error initializing OpenAI client: {e}", flush=True)
+        return None
+
+def check_input_not_none(input, image_data_url):
+    if input is None and image_data_url is None:
+        print(f"########### Invalid input: {input}", flush=True)
+        return "Sorry, I couldn't understand your request. Please try again."
 
 def init_llm(user_id, input, prompt_type, image_data_url=None, user_timezone=None, voice_data_filename=None, other_files=None):
     print(f"############ Initialized with {mode} mode", flush=True)
     try:
         print(f"########### Timezone: {user_timezone}", flush=True)
-        user_latest_event_draft = None
-        latest_conversations = None
+        latest_conversations, user_latest_event_draft = get_latest_memory(user_id)
 
-        for memory in session_memories:
-            _, memory = get_user_memory(user_id)
-            if memory:
-                latest_draft = memory['latest_event_draft'] if memory['latest_event_draft'] else None
-                latest_draft_status = latest_draft['status'] if latest_draft else None
-                user_latest_event_draft = latest_draft if latest_draft_status == 'draft' else None
-                print(f"########### User latest event draft: {user_latest_event_draft}", flush=True)
-                latest_conversations = memory['latest_conversations'] if memory['latest_conversations'] else None
-
-        try:
-            client = OpenAI()
-            print("✅ OpenAI client initialized", flush=True)
-        except Exception as e:
-            print(f"❌ Error initializing OpenAI client: {e}", flush=True)
+        client = init_openai()
+        if not client:
             return "Sorry, I couldn't connect to the OpenAI service. Please try again later."
         
         if voice_data_filename:
@@ -65,6 +66,8 @@ def init_llm(user_id, input, prompt_type, image_data_url=None, user_timezone=Non
                 input = transcription
             except Exception as e:
                 print(f"########### Error transcribing audio: {str(e)}", flush=True)
+            
+        check_input_not_none(input, image_data_url)
 
         if prompt_type == 'main':   
             prompt = prompt_init(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
@@ -105,67 +108,91 @@ def init_llm(user_id, input, prompt_type, image_data_url=None, user_timezone=Non
         print(f"########### Error in LLM: {str(e)}", flush=True)
         return "Sorry, I couldn't process your request. Please try again."
 
-def summarize_event(resp, user_id, input, is_test=False, image_data_url=None, voice_data_filename=None):
+def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice_data_filename=None):
     cal_timezone = get_user_calendar_timezone(user_id, is_test)
     user_timezone = check_timezone(user_id, cal_timezone)
-    raw_answer = init_llm(user_id, input, 'main', image_data_url, user_timezone, voice_data_filename, None)
-    answer = clean_instruction_block(raw_answer)
-    is_answer_string = isinstance(answer, str)
+    raw_answer_main = init_llm(user_id, input, 'main', image_data_url, user_timezone, voice_data_filename, None)
+    main_answer = clean_instruction_block(raw_answer_main)
+    is_main_answer_string = isinstance(main_answer, str)
     whatsappNum = f'whatsapp:+{user_id}'
 
-    if is_answer_string and 'add_event:' in answer.strip():
-        print(f"########### Adding event: {answer}", flush=True)
-        try:
-            loading_message = "Adding your event..."
-            send_whatsapp_message(f'{whatsappNum}', loading_message)
-        except Exception as e:
-            print(f"########### Error sending loading message: {str(e)}", flush=True)
+    if is_main_answer_string and 'schedule_event' in main_answer.strip():
+        raw_answer = init_llm(user_id, input, 'add_event', image_data_url, user_timezone, voice_data_filename, None)
+        answer = clean_instruction_block(raw_answer)
+        is_answer_string = isinstance(answer, str)
 
-        try:
-            new_event = save_event_to_calendar(answer, user_id, is_test)
-            print(f"########### Replying event: {new_event}", flush=True)
-            return new_event
-        except Exception as e:
-            print(f"########### Error adding new event: {e}", flush=True)
-            return "Sorry, I could not add the event to your calendar."
+        if is_answer_string and 'add_event:' in answer.strip():
+            print(f"########### Adding event: {answer}", flush=True)
+            try:
+                loading_message = "Adding your event..."
+                send_whatsapp_message(f'{whatsappNum}', loading_message)
+            except Exception as e:
+                print(f"########### Error sending loading message: {str(e)}", flush=True)
 
-    elif is_answer_string and 'draft_event:' in answer.strip():
-        print(f"########### Drafting event: {answer}", flush=True)
-        try:
-            loading_message = "Drafting..."
-            send_whatsapp_message(f'{whatsappNum}', loading_message)
-        except Exception as e:
-            print(f"########### Error sending loading message: {str(e)}", flush=True)
-        try:
-            text_reply = save_event_to_draft(answer, user_id)
-            print(f"########### Replying event draft: {text_reply}", flush=True)
-            return text_reply
-        except Exception as e:
-            print(f"########### Error parsing event details: {str(e)}", flush=True)
-            return "Sorry, I couldn't understand the event details."
+            try:
+                new_event = save_event_to_calendar(answer, user_id, is_test)
+                print(f"########### Replying event: {new_event}", flush=True)
+                return new_event
+            except Exception as e:
+                print(f"########### Error adding new event: {e}", flush=True)
+                return "Sorry, I could not add the event to your calendar."
+    
+        elif is_answer_string and 'draft_event:' in answer.strip():
+            print(f"########### Drafting event: {answer}", flush=True)
+            try:
+                loading_message = "Drafting..."
+                send_whatsapp_message(f'{whatsappNum}', loading_message)
+            except Exception as e:
+                print(f"########### Error sending loading message: {str(e)}", flush=True)
+            try:
+                text_reply = save_event_to_draft(answer, user_id)
+                print(f"########### Replying event draft: {text_reply}", flush=True)
+                return text_reply
+            except Exception as e:
+                print(f"########### Error parsing event details: {str(e)}", flush=True)
+                return "Sorry, I couldn't understand the event details."
         
-    elif is_answer_string and 'retrieve_event:' in answer.strip():
-        print(f"########### Retrieving events: {answer}", flush=True)
-        try:
-            loading_message = "Fetching your events..."
-            send_whatsapp_message(f'{whatsappNum}', loading_message)
-        except Exception as e:
-            print(f"########### Error sending loading message: {str(e)}", flush=True)
-        try:
-            events = get_upcoming_events(answer, user_id, is_test)
-            print(f"########### All list of Events: {events}", flush=True)
-            event_list, _, _, action = events
-            if action == 'retrieve':
-                user_events = transform_events_to_text(events, user_timezone)
-                return user_events
-            elif action == 'retrieve_free_time':
-                raw_answer_analyzer = init_llm(user_id, input, 'schedule_analyzer', image_data_url, user_timezone, voice_data_filename, event_list)
-                return raw_answer_analyzer
-        except Exception as e:
-            print(f"########### Error retrieving events: {str(e)}", flush=True)
-            return "Sorry, I am unable to fetch your events at the moment."
+        elif is_answer_string and 'timezone_set:' in answer.strip():
+            print(f"########### Setting timezone: {answer}", flush=True)
+            try:
+                new_timezone_raw = answer.split('timezone_set: ')[1].strip()
+                new_timezone = extract_json_block(new_timezone_raw)
+                updated_timezone = add_update_timezone(user_id, new_timezone)
+                if updated_timezone:
+                    return f'Your timezone has been changed to {new_timezone}. Please proceed with your request.'
+                else:
+                    return f'Failed to set your timezone. Please try again.'
+            except Exception as e:
+                print(f"########### Error updating timezone: {str(e)}", flush=True)
+                return "Sorry, I could not set your timezone. Please try again."
+            
+    elif is_main_answer_string and 'retrieve_event' in main_answer.strip():
+        raw_answer = init_llm(user_id, input, 'retrieve', image_data_url, user_timezone, voice_data_filename, None)
+        answer = clean_instruction_block(raw_answer)
+        is_answer_string = isinstance(answer, str)
+        
+        if is_answer_string and 'retrieve_event:' in answer.strip():
+            print(f"########### Retrieving events: {answer}", flush=True)
+            try:
+                loading_message = "Fetching your events..."
+                send_whatsapp_message(f'{whatsappNum}', loading_message)
+            except Exception as e:
+                print(f"########### Error sending loading message: {str(e)}", flush=True)
+            try:
+                events = get_upcoming_events(answer, user_id, is_test)
+                print(f"########### All list of Events: {events}", flush=True)
+                event_list, _, _, action = events
+                if action == 'retrieve':
+                    user_events = transform_events_to_text(events, user_timezone)
+                    return user_events
+                elif action == 'retrieve_free_time':
+                    raw_answer_analyzer = init_llm(user_id, input, 'schedule_analyzer', image_data_url, user_timezone, voice_data_filename, event_list)
+                    return raw_answer_analyzer
+            except Exception as e:
+                print(f"########### Error retrieving events: {str(e)}", flush=True)
+                return "Sorry, I am unable to fetch your events at the moment."
 
-    elif is_answer_string and 'timezone_set:' in answer.strip():
+    elif is_main_answer_string and 'timezone_set:' in main_answer.strip():
         print(f"########### Setting timezone: {answer}", flush=True)
         try:
             new_timezone_raw = answer.split('timezone_set: ')[1].strip()
@@ -179,10 +206,10 @@ def summarize_event(resp, user_id, input, is_test=False, image_data_url=None, vo
             print(f"########### Error updating timezone: {str(e)}", flush=True)
             return "Sorry, I could not set your timezone. Please try again."
         
-    elif is_answer_string and answer.strip().startswith("Event not added"):
-        print(f"########### Event not added: {answer}", flush=True)
+    elif is_main_answer_string and main_answer.strip().startswith("Event not added"):
+        print(f"########### Event not added: {main_answer}", flush=True)
         return "Sorry, I'm unable to assist you with this event. Please start over with more details."
     
     else:
-        print(f"########### Instruction not recognized: {answer}", flush=True)
-        return answer
+        print(f"########### Instruction not recognized: {main_answer}", flush=True)
+        return main_answer

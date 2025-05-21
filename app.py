@@ -8,7 +8,7 @@ from google_auth_oauthlib.flow import Flow
 from twilio.twiml.messaging_response import MessagingResponse
 from creds import *
 from keywords import *
-from model import summarize_event, mode
+from model import invoke_model, mode
 from helpers import extract_emails, extract_phone_number, get_image_data_url, send_whatsapp_message, get_voice_data_url, trim_reply
 from auth import verify_auth_token_link, verify_oauth_connection, save_token, get_credentials, generate_auth_link, authenticate_command, authenticate_only_command, whitelist_admin_command
 from database import add_pending_auth, get_pending_auth, check_user, check_user_balance, deduct_chat_balance, use_test_account, check_user_active_email, update_user_whitelist_status, update_send_whitelisted_message_status, add_user_whitelist_status, update_send_test_calendar_message, revoke_access_command
@@ -243,7 +243,7 @@ def receive_whatsapp():
 
         delete_user_memory(user_id)
 
-        reply_text = summarize_event(resp, user_id, incoming_msg, is_test, image_data_url, voice_data_filename)
+        reply_text = invoke_model(resp, user_id, incoming_msg, is_test, image_data_url, voice_data_filename)
 
         if not isinstance(reply_text, str):
             reply_text = str(reply_text)
