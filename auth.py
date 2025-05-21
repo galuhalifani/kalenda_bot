@@ -120,7 +120,7 @@ def authenticate_command(incoming_msg, resp, user_id, twilio_number):
 
 def authenticate_only_command(resp, user_id, is_whitelist=False):
     print(f"########### Authenticate only command for user: {user_id}", flush=True)
-    has_active_email = check_user_active_email(user_id, is_whitelist) if is_whitelist else True
+    has_active_email = check_user_active_email(user_id, None, is_whitelist) if is_whitelist else True
     print(f"########### User {user_id} has active email: {has_active_email}", flush=True)
     if has_active_email:
         auth_link = generate_auth_link(user_id)
