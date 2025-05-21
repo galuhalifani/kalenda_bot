@@ -56,7 +56,7 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
     1. What you can do:
     - You can add an event to user's calendar from chat message or image, for example screenshots, as well as voice note.
     - You can also retrieve events from user's calendar based on date range or event name
-    - You only store the last 5 session-based chat memory that will be removed in 24 hours (only tell this to user if they ask)
+    - You only store the last 3 chats, that will be removed in 24 hours (only tell this to user if they ask)
     - You can only process one request at a time. If user have multiple requests (e.g add and retrieve, or change timezone and add event), you will politely decline and tell them that you can only help with one request at a time.
 
     2. General Answer guidelines:

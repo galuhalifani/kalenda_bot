@@ -35,21 +35,17 @@ session_memories = [{
     }
 }]
 
-max_chat_stored = 5
+max_chat_stored = 3
 
 def add_user_memory(user_id, input, answer):
     print(f"########### Adding memory for user: {user_id}", flush=True)
     try:
         global session_memories
-        print(f"########### All memories: {session_memories}", flush=True)
         index, memory = get_user_memory(user_id)
         if memory:
-            print(f"########### Memory found: {memory}", flush=True)
-
             if 'latest_conversations' not in memory:
                 session_memories[index]['latest_conversations'] = []
             else:
-                print(f"########### Latest Conversation found. latest conv: {memory['latest_conversations']}", flush=True)
                 if len(memory['latest_conversations']) > max_chat_stored:
                     session_memories[index]['latest_conversations'].pop(0)
 
@@ -58,7 +54,7 @@ def add_user_memory(user_id, input, answer):
                 "aiMessage": answer,
                 "timestamp": datetime.now(tzn.utc)
             })
-            print(f"########### Memory appended: {session_memories[index]}", flush=True)
+            print(f"########### Memory appended", flush=True)
         else:
             session_memories.append({
                 "user_id": user_id,
@@ -75,19 +71,14 @@ def add_user_memory(user_id, input, answer):
 def get_user_memory(user_id):
     for index, memory in enumerate(session_memories):
         if memory['user_id'] == user_id:
-            print(f"########### Memory found: {memory}", flush=True)
             return index, memory
-    print(f"########### No memory found for user: {user_id}", flush=True)
     return None, None
 
 def delete_user_memory(user_id):
     _, memory = get_user_memory(user_id)
 
     if not memory:
-        print(f"########### No memory found for user: {user_id}", flush=True)
         return
-
-    print(f"########### Memory found. latest conv: {memory['latest_conversations']}", flush=True)
 
     if memory['latest_conversations']:
         last_ts = memory['latest_conversations'][-1]['timestamp']
