@@ -2,7 +2,7 @@ from pymongo import MongoClient
 from creds import *
 from datetime import datetime, timedelta, timezone as tzn
 from helpers import send_whatsapp_message
-from text import using_test_calendar
+from text import using_test_calendar, using_test_calendar_whitelist
 
 def init_mongodb():
     try:
@@ -228,20 +228,21 @@ def update_send_whitelisted_message_status(user_number):
     )
     return user_number
 
-def send_test_calendar_message(resp, using_test_calendar, user_id):
-    resp.message(using_test_calendar)
+def send_test_calendar_message(resp, using_test_calendar, user_id, is_whitelist=False):
+    text = using_test_calendar_whitelist if is_whitelist else using_test_calendar
+    resp.message(text)
     user_collection.update_one(
         {"user_id": user_id},
         {"$set": {"test_calendar_message": True}},
         upsert=True
     )
 
-def update_send_test_calendar_message(resp, using_test_calendar, user_id):
+def update_send_test_calendar_message(resp, using_test_calendar, user_id, is_using_whitelist=False):
     user = user_collection.find_one({"user_id": user_id})
     test_calendar_message = user.get("test_calendar_message", False)
 
     if not user or not test_calendar_message:
-        sending = send_test_calendar_message(resp, using_test_calendar, user_id)
+        sending = send_test_calendar_message(resp, using_test_calendar, user_id, is_using_whitelist)
         return sending
     else:
         if test_calendar_message:

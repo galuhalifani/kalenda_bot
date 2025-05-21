@@ -7,7 +7,7 @@ from database import user_collection, tokens_collection, email_collection, add_u
 from helpers import extract_phone_number, extract_emails, send_whatsapp_message
 import secrets
 from keywords import *
-from text import connect_to_calendar, connect_to_calendar_confirmation
+from text import connect_to_calendar, connect_to_calendar_confirmation, connect_to_calendar_whitelist
 
 def encrypt_token(token_str):
     FERNET_KEY = os.environ["FERNET_KEY"]
@@ -118,14 +118,14 @@ def authenticate_command(incoming_msg, resp, user_id):
             send_whatsapp_message(ADMIN_NUMBER, f"ERROR: {user_id, user_email, incoming_msg, e}")
             return str(resp)
 
-def authenticate_only_command(resp, user_id):
+def authenticate_only_command(resp, user_id, is_whitelist=False):
     print(f"########### Authenticate only command for user: {user_id}", flush=True)
-    # has_active_email = check_user_active_email(user_id)
-    has_active_email = True
+    has_active_email = check_user_active_email(user_id, is_whitelist) if is_whitelist else True
     print(f"########### User {user_id} has active email: {has_active_email}", flush=True)
     if has_active_email:
         auth_link = generate_auth_link(user_id)
-        resp.message(connect_to_calendar(auth_link, has_active_email))
+        text = connect_to_calendar_whitelist(auth_link, has_active_email) if is_whitelist else connect_to_calendar(auth_link, has_active_email)
+        resp.message(text)
         return str(resp)
     elif has_active_email == False:
         resp.message("❌ Your email is not yet whitelisted. Please type 'authenticate <your-google-calendar-email>' to whitelist your email")
