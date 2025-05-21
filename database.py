@@ -281,7 +281,7 @@ def revoke_access_command(resp, user_id):
         tokens_collection.delete_one(
             {"user_id": user_id}
         )
-        resp.message("✅ Your access has been revoked. You can re-authenticate by typing 'authenticate <your-email>'")
+        resp.message("✅ Your access has been revoked. You can re-authenticate by typing 'authenticate'")
         return str(resp)
     else:
         resp.message("You are not connected to any email account. To connect and get whitelisted, please type 'authenticate <your-email>'")
