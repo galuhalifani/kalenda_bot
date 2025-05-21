@@ -70,7 +70,7 @@ def init_llm(user_id, input, prompt_type, image_data_url=None, user_timezone=Non
         check_input_not_none(input, image_data_url)
 
         if prompt_type == 'main':   
-            prompt = prompt_main(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
+            prompt = prompt_init(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
         elif prompt_type == 'schedule_analyzer':
             prompt = prompt_analyzer(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations, other_files)
         elif prompt_type == 'add_event':
