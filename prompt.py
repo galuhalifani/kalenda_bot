@@ -148,6 +148,7 @@ def prompt_analyzer(input, today, timezone=None, event_draft=None, latest_conver
     Based on the event_list, provide a summary of available time slots which are not booked in the list. 
     The scope of the duration of your analysis will be based on the user's input, or, if not specified, based on the earliest start time and the latest end time of the events in the list.
     The scope of time or hours of your analysis will be based on the user's input, or, if not specified, based on the default working hours of 8 AM to 7 PM. 
+    If there are events that span the entire day, you will ignore them and add them as remarks, unless the user specifically asks to include them in the analysis.
 
     You will return the available time slots grouped by date, in bullet point list, in a human-readable format, including the start and end times of each slot, for example:
 
@@ -159,6 +160,7 @@ def prompt_analyzer(input, today, timezone=None, event_draft=None, latest_conver
     - 9:00 AM - 11:00 AM
     - 1:00 PM - 3:00 PM
     - 5:00 PM - 7:00 PM
+    Note: You have two events scheduled that span the entire day on this date: Event A, Event B, which is not considered in the above slots. If you consider these events, you do not have any available time slots on this date.
 
     If user did not specify the time range, you will mention that you are using the default working hours of 8 AM to 7 PM.
 
