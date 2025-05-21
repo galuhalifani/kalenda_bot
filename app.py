@@ -148,6 +148,7 @@ def oauth_callback():
 
         try:
             save_token(user_id, creds, credentials)
+            print(f"########### Token saved for user: {user_id}", flush=True)
         except Exception as e:
             print(f"########### ERROR saving token: {e}", flush=True)
             return "❌ Error saving token. Please try again."

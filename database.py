@@ -153,6 +153,7 @@ def use_test_account(user_id):
 def check_user_active_email(user_id, user_email=None):
     print(f"########### Checking if user is whitelisted: {user_id}", flush=True)
     user = user_collection.find_one({"user_id": user_id})
+    print(f"########### User: {user}", flush=True)
 
     if user:
         db_email = user.get("email", None)
