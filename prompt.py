@@ -121,6 +121,7 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
     - If user does not provide start and end date, omit both start and end.
     - If user adds start and/or end date indications, interpret them and transform the dates in ISO 8601 format with timezone offset.
     - If user does not provide calendar name, you will omit the calendar key
+    - If USER_INPUT looks like a follow-up and the latest item in LATEST_CONVERSATION's aiMessage points to a calendar retrieval or availability check, you will respond with RETRIEVAL FORMAT and adjust the fields accordingly or keep it the same, depending on user's input.
 
     3. Additional rules:
     - You cannot help users modify or delete an existing calendar event -- ask them to do it via Google Calendar, unless the event status is a draft as per DRAFT_EVENT.
@@ -149,12 +150,14 @@ def prompt_analyzer(input, today, timezone=None, event_draft=None, latest_conver
     The scope of the duration of your analysis will be based on the user's input, or, if not specified, based on the earliest start time and the latest end time of the events in the list.
     The scope of time or hours of your analysis will be based on the user's input, or, if not specified, based on the default working hours of 8 AM to 7 PM. 
     If there are events that span the entire day, you will ignore them and add them as remarks, unless the user specifically asks to include them in the analysis.
+    If there are events that are marked as transparent or does not block availability in the calendar, you will ignore them and add them as remarks, unless the user specifically asks to include them in the analysis.
 
     You will return the available time slots grouped by date, in bullet point list, in a human-readable format, including the start and end times of each slot, for example:
 
     *Mon, 19 May 2025:*
     - 10:00 AM - 12:00 PM
     - 2:00 PM - 4:00 PM
+    Please note that the events "A" and "B" are marked as transparent, meaning they do not block your availability. Therefore, I have not considered them as blocking your time.
 
     *Tue, 20 May 2025:*
     - 9:00 AM - 11:00 AM
