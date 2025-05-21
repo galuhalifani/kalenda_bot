@@ -1,4 +1,4 @@
-# def summarize_event(resp, user_id, input, is_test=False, image_data_url=None, voice_data_filename=None):
+# def summarize_event(resp, user_id, input, is_test=False, image_data_url=None, voice_data_filename=None, twilio_number=TWILIO_PHONE_NUMBER):
 #     cal_timezone = get_user_calendar_timezone(user_id, is_test)
 #     user_timezone = check_timezone(user_id, cal_timezone)
 #     raw_answer = init_llm(user_id, input, 'main', image_data_url, user_timezone, voice_data_filename, None)
@@ -10,7 +10,7 @@
 #         print(f"########### Adding event: {answer}", flush=True)
 #         try:
 #             loading_message = "Adding your event..."
-#             send_whatsapp_message(f'{whatsappNum}', loading_message)
+#             send_whatsapp_message(f'{whatsappNum}', loading_message, twilio_number)
 #         except Exception as e:
 #             print(f"########### Error sending loading message: {str(e)}", flush=True)
 
@@ -26,7 +26,7 @@
 #         print(f"########### Drafting event: {answer}", flush=True)
 #         try:
 #             loading_message = "Drafting..."
-#             send_whatsapp_message(f'{whatsappNum}', loading_message)
+#             send_whatsapp_message(f'{whatsappNum}', loading_message, twilio_number)
 #         except Exception as e:
 #             print(f"########### Error sending loading message: {str(e)}", flush=True)
 #         try:
@@ -41,7 +41,7 @@
 #         print(f"########### Retrieving events: {answer}", flush=True)
 #         try:
 #             loading_message = "Fetching your events..."
-#             send_whatsapp_message(f'{whatsappNum}', loading_message)
+#             send_whatsapp_message(f'{whatsappNum}', loading_message, twilio_number)
 #         except Exception as e:
 #             print(f"########### Error sending loading message: {str(e)}", flush=True)
 #         try:
@@ -80,7 +80,7 @@
 #         print(f"########### Instruction not recognized: {answer}", flush=True)
 #         return answer
 
-# def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice_data_filename=None):
+# def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice_data_filename=None, twilio_number=TWILIO_PHONE_NUMBER):
 #     cal_timezone = get_user_calendar_timezone(user_id, is_test)
 #     user_timezone = check_timezone(user_id, cal_timezone)
 #     raw_answer_main = init_llm(user_id, input, 'main', image_data_url, user_timezone, voice_data_filename, None)
@@ -98,7 +98,7 @@
 #             print(f"########### Adding event: {answer}", flush=True)
 #             try:
 #                 loading_message = "Adding your event..."
-#                 send_whatsapp_message(f'{whatsappNum}', loading_message)
+#                 send_whatsapp_message(f'{whatsappNum}', loading_message, twilio_number)
 #             except Exception as e:
 #                 print(f"########### Error sending loading message: {str(e)}", flush=True)
 
@@ -114,7 +114,7 @@
 #             print(f"########### Drafting event: {answer}", flush=True)
 #             try:
 #                 loading_message = "Drafting..."
-#                 send_whatsapp_message(f'{whatsappNum}', loading_message)
+#                 send_whatsapp_message(f'{whatsappNum}', loading_message, twilio_number)
 #             except Exception as e:
 #                 print(f"########### Error sending loading message: {str(e)}", flush=True)
 #             try:
@@ -153,7 +153,7 @@
 #             print(f"########### Retrieving events: {answer}", flush=True)
 #             try:
 #                 loading_message = "Fetching your events..."
-#                 send_whatsapp_message(f'{whatsappNum}', loading_message)
+#                 send_whatsapp_message(f'{whatsappNum}', loading_message, twilio_number)
 #             except Exception as e:
 #                 print(f"########### Error sending loading message: {str(e)}", flush=True)
 #             try:

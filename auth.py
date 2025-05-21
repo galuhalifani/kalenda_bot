@@ -91,7 +91,7 @@ def verify_oauth_connection(user_id):
     
     return True
 
-def authenticate_command(incoming_msg, resp, user_id):
+def authenticate_command(incoming_msg, resp, user_id, twilio_number):
     authenticate_args = incoming_msg.split(authenticate_keyword)
     
     if len(authenticate_args) > 1: # if authenticate <email>
@@ -101,7 +101,7 @@ def authenticate_command(incoming_msg, resp, user_id):
                 is_whitelisted = check_user_active_email(user_id, user_email)
                 if not is_whitelisted:
                     add_user_whitelist_status(user_id, user_email)
-                    send_whatsapp_message(ADMIN_NUMBER, "New user request for whitelisting: " + user_email + "\n" + "link to whitelist: " + WHITELIST_LINK)
+                    send_whatsapp_message(ADMIN_NUMBER, "New user request for whitelisting: " + user_email + "\n" + "link to whitelist: " + WHITELIST_LINK, twilio_number)
                     resp.message("⏳ Your email is now processed for whitelisting. You will receive a confirmation message within 24hr or less once it's added to the whitelist.")
                     return str(resp)
                 else:
@@ -111,11 +111,11 @@ def authenticate_command(incoming_msg, resp, user_id):
             except Exception as e:
                 print(f"########### Error adding user whitelist status: {e}", flush=True)
                 resp.message("❌ Error adding your email to the whitelist. Please try again.")
-                send_whatsapp_message(ADMIN_NUMBER, f"ERROR: {user_id, user_email, incoming_msg, e}")
+                send_whatsapp_message(ADMIN_NUMBER, f"ERROR: {user_id, user_email, incoming_msg, e}", twilio_number)
                 return str(resp)
         else:
             resp.message("Unable to detect email address. Please try again.")
-            send_whatsapp_message(ADMIN_NUMBER, f"ERROR: {user_id, user_email, incoming_msg, e}")
+            send_whatsapp_message(ADMIN_NUMBER, f"ERROR: {user_id, user_email, incoming_msg, e}", twilio_number)
             return str(resp)
 
 def authenticate_only_command(resp, user_id, is_whitelist=False):
@@ -134,7 +134,7 @@ def authenticate_only_command(resp, user_id, is_whitelist=False):
         resp.message("Your email is pending for whitelisting. We will get back to you in 24h or less. For any questions, reach out to admin at galuh.adika@gmail.com.")
         return str(resp)
 
-def whitelist_admin_command(incoming_msg, resp, user_id):
+def whitelist_admin_command(incoming_msg, resp, user_id, twilio_number):
     if user_id == extract_phone_number(ADMIN_NUMBER):
         message_array = incoming_msg.split(" ")
         if len(message_array) > 1:
@@ -145,8 +145,8 @@ def whitelist_admin_command(incoming_msg, resp, user_id):
                         try:
                             whatsapp_number = f"whatsapp:{user_number}"
                             instruction_text = f"Your email {email} is not associated with a valid Google account, or has disabled access to 3rd-party Oauth.\n\n Please use another email address: type _authenticate <email-address>_, or contact admin for further assistance."
-                            send_whatsapp_message(whatsapp_number, instruction_text)
-                            send_whatsapp_message(ADMIN_NUMBER, f"email {email} has been rejected and user {user_number} has been notified.")
+                            send_whatsapp_message(whatsapp_number, instruction_text, twilio_number)
+                            send_whatsapp_message(ADMIN_NUMBER, f"email {email} has been rejected and user {user_number} has been notified.", twilio_number)
                             return str(resp)
                         except Exception as e:
                             print(f"########### Error sending whitelisted failed message: {str(e)}", flush=True)
@@ -159,8 +159,8 @@ def whitelist_admin_command(incoming_msg, resp, user_id):
                         whatsapp_number = f"whatsapp:{user_number}"
                         auth_link = generate_auth_link(user_number)
                         instruction_text = connect_to_calendar_confirmation(auth_link, email)
-                        send_whatsapp_message(whatsapp_number, instruction_text)
-                        send_whatsapp_message(ADMIN_NUMBER, f"email {email} has been whitelisted and user {user_number} has been notified.")
+                        send_whatsapp_message(whatsapp_number, instruction_text, twilio_number)
+                        send_whatsapp_message(ADMIN_NUMBER, f"email {email} has been whitelisted and user {user_number} has been notified.", twilio_number)
                         update_send_whitelisted_message_status(user_number)
                         return str(resp)
                     except Exception as e:

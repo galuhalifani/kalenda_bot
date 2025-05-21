@@ -173,6 +173,7 @@ def receive_whatsapp():
         is_revoking = lower_incoming_msg.startswith(revoke_access_keyword)
         is_audio = False
         is_image = False
+        twilio_number = TWILIO_PHONE_NUMBER
 
         if content_type:
             is_audio = bool(media_url) and content_type.startswith("audio/")
@@ -187,7 +188,7 @@ def receive_whatsapp():
             if (user['status'] == 'new'):
                 print(f"########### Send initial greetings: {user_id}")
                 try:
-                    send_whatsapp_message(record_user_id, greeting)
+                    send_whatsapp_message(record_user_id, greeting, twilio_number)
                 except Exception as e:
                     print(f"########### ERROR sending greeting: {e}", flush=True)
 
@@ -205,7 +206,7 @@ def receive_whatsapp():
                 email = incoming_msg[len("authenticate"):].strip()
                 
                 if email: # if authenticate <email>
-                    return authenticate_command(incoming_msg, resp, user_id)
+                    return authenticate_command(incoming_msg, resp, user_id, twilio_number)
                 else:
                     # if just authenticate
                     return authenticate_only_command(resp, user_id)
@@ -217,7 +218,7 @@ def receive_whatsapp():
                 return str(resp)
             
             elif is_whitelisting:
-                return whitelist_admin_command(incoming_msg, resp, user_id)       
+                return whitelist_admin_command(incoming_msg, resp, user_id, twilio_number)       
 
             elif is_revoking:
                 return revoke_access_command(resp, user_id)
@@ -247,16 +248,16 @@ def receive_whatsapp():
 
         delete_user_memory(user_id)
 
-        reply_text = invoke_model(resp, user_id, incoming_msg, is_test, image_data_url, voice_data_filename)
+        reply_text = invoke_model(resp, user_id, incoming_msg, is_test, image_data_url, voice_data_filename, twilio_number)
 
         if not isinstance(reply_text, str):
             reply_text = str(reply_text)
 
         if len(reply_text) > 1400:
             reply_text = trim_reply(reply_text)
-            send_whatsapp_message(record_user_id, reply_text)
+            send_whatsapp_message(record_user_id, reply_text, twilio_number)
         else:
-            send_whatsapp_message(record_user_id, reply_text)
+            send_whatsapp_message(record_user_id, reply_text, twilio_number)
 
         print(f"########### End process {user_id}. Response: {reply_text}", flush=True)
 
@@ -286,6 +287,7 @@ def receive_whatsapp_test():
         is_revoking = lower_incoming_msg.startswith(revoke_access_keyword)
         is_audio = False
         is_image = False
+        twilio_number = TWILIO_PHONE_NUMBER_TEST
 
         if content_type:
             is_audio = bool(media_url) and content_type.startswith("audio/")
@@ -300,7 +302,7 @@ def receive_whatsapp_test():
             if (user['status'] == 'new'):
                 print(f"########### Send initial greetings: {user_id}")
                 try:
-                    send_whatsapp_message(record_user_id, greeting)
+                    send_whatsapp_message(record_user_id, greeting, twilio_number)
                 except Exception as e:
                     print(f"########### ERROR sending greeting: {e}", flush=True)
 
@@ -318,7 +320,7 @@ def receive_whatsapp_test():
                 email = incoming_msg[len("authenticate"):].strip()
                 
                 if email: # if authenticate <email>
-                    return authenticate_command(incoming_msg, resp, user_id)
+                    return authenticate_command(incoming_msg, resp, user_id, twilio_number)
                 else:
                     # if just authenticate
                     return authenticate_only_command(resp, user_id, True)
@@ -330,7 +332,7 @@ def receive_whatsapp_test():
                 return str(resp)
             
             elif is_whitelisting:
-                return whitelist_admin_command(incoming_msg, resp, user_id)       
+                return whitelist_admin_command(incoming_msg, resp, user_id, twilio_number)       
 
             elif is_revoking:
                 return revoke_access_command(resp, user_id)
@@ -360,16 +362,16 @@ def receive_whatsapp_test():
 
         delete_user_memory(user_id)
 
-        reply_text = invoke_model(resp, user_id, incoming_msg, is_test, image_data_url, voice_data_filename)
+        reply_text = invoke_model(resp, user_id, incoming_msg, is_test, image_data_url, voice_data_filename, twilio_number)
 
         if not isinstance(reply_text, str):
             reply_text = str(reply_text)
 
         if len(reply_text) > 1400:
             reply_text = trim_reply(reply_text)
-            send_whatsapp_message(record_user_id, reply_text)
+            send_whatsapp_message(record_user_id, reply_text, twilio_number)
         else:
-            send_whatsapp_message(record_user_id, reply_text)
+            send_whatsapp_message(record_user_id, reply_text, twilio_number)
 
         print(f"########### End process {user_id}. Response: {reply_text}", flush=True)
 
