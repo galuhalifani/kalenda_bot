@@ -203,10 +203,12 @@ def receive_whatsapp():
 
         try:
             if is_authenticating:
-                email = incoming_msg[len("authenticate"):].strip()
+                email = lower_incoming_msg[len("authenticate"):].strip()
+                print(f"########### Email: {email}", flush=True)
                 
                 if email: # if authenticate <email>
-                    return authenticate_command(incoming_msg, resp, user_id, twilio_number)
+                    print(f"########### Authenticate email", flush=True)
+                    return authenticate_command(lower_incoming_msg, resp, user_id, twilio_number)
                 else:
                     # if just authenticate
                     return authenticate_only_command(resp, user_id)
@@ -317,10 +319,10 @@ def receive_whatsapp_test():
 
         try:
             if is_authenticating:
-                email = incoming_msg[len("authenticate"):].strip()
+                email = lower_incoming_msg[len("authenticate"):].strip()
                 
                 if email: # if authenticate <email>
-                    return authenticate_command(incoming_msg, resp, user_id, twilio_number)
+                    return authenticate_command(lower_incoming_msg, resp, user_id, twilio_number)
                 else:
                     # if just authenticate
                     return authenticate_only_command(resp, user_id, True)
