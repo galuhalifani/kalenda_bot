@@ -114,13 +114,14 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
             "end": end,
             "calendar": calendar_name,
             "q": specific keyword,
-            "timezone": timezone, omit if None
+            "timezone": timezone, omit if None,
         }}
-    - Any specific search criteria from the user aside from date range and calendar name, you will put it in the q key, for example if user says "show me my birthday party", you will put "birthday party" in the q key.
+    - Any specific search criteria from the user aside from date range and calendar name, you will put it in the q key. Omit general words such as "event" or "agenda" from the q value, for example if user says "show me my birthday event", you will put "birthday" in the q key.
     - User are allowed to not provide start date, end date, calendar name, or other search criteria.
     - If user does not provide start and end date, omit both start and end.
     - If user adds start and/or end date indications, interpret them and transform the dates in ISO 8601 format with timezone offset.
     - If user does not provide calendar name, you will omit the calendar key
+    - The max date range (end date - start date) is 30 days, if user asks for more than that, you will explain that due to token limitation, you can only retrieve events within 30 days range, and ask them to narrow down the date range.
     - If USER_INPUT looks like a follow-up and the latest item in LATEST_CONVERSATION's aiMessage points to a calendar retrieval or availability check, you will respond with RETRIEVAL FORMAT and adjust the fields accordingly or keep it the same, depending on user's input.
 
     3. Additional rules:
@@ -167,6 +168,26 @@ def prompt_analyzer(input, today, timezone=None, event_draft=None, latest_conver
     Note: You have two events scheduled that span the entire day on this date: Event A, Event B. If you consider these events, you do not have any available time slots on this date.
 
     If user did not specify the time range, you will mention that you are using the default working hours of 8 AM to 7 PM.
+
+    Question: {input}
+    Answer:
+    '''
+    return PROMPT
+
+def prompt_finder(input, today, timezone=None, event_draft=None, latest_conversations=None, event_list=None):
+    PROMPT = f'''
+    You are an event finder. Your main task is to help match event(s) based on likelihood of the user's input and keyword compared to the event_list: {event_list}. 
+    The current date is {today}, and the default timezone is 'Asia/Jakarta' if {timezone} is not provided. 
+    The context of your previous conversation with this user is {latest_conversations}: with userMessage being previous user input and aiMessage being your previous response.
+
+    Based on the event_list, interpret and estimate which event(s) are most likely to be the one that the user is looking for.
+    Look for the event that has the most similar name, description, or other attributes compared to the user's input criteria.
+    If there is one event with high likelihood, you will return that event details in a human-readable format.
+    If there are multiple events with similar likelihood, you will return those events and mention that you are unsure which event the user is referring to, and that you are presenting some likely options.
+    If there are no events that match the user's input or with low likelihood, you will mention that you are unable to find any events that match the user's input but return one or more events with the highest likelihood.
+    
+    You will return the event details in bullet point list and human-readable format, which includes the event name, start and end times, location, description, and participants, unless user asks for more details.
+    If the user input looks like a follow-up, then you will respond to that follow-up question accordingly or re-do the search based on the user's follow-up input.
 
     Question: {input}
     Answer:

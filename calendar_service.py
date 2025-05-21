@@ -141,6 +141,7 @@ def get_upcoming_events(instruction, user_id, is_test=False):
         calendars = None
 
     all_events = []
+
     if not calendars:
         events_result = service.events().list(
             calendarId='primary', 
@@ -169,27 +170,16 @@ def get_upcoming_events(instruction, user_id, is_test=False):
             if calendar_name_filter and (calendar_name.lower() != calendar_name_filter.lower()):
                 continue
             
-            if q:
-                print(f"########### Searching for keyword: {q}", flush=True)
-                events_result = service.events().list(
-                    calendarId=calendar_id, 
-                    timeMin=start_str,
-                    timeMax=end_str,
-                    singleEvents=True,
-                    orderBy='startTime',
-                    q=q
-                ).execute()
-            else:
-                print(f"########### No keyword provided, fetching all events", flush=True)
-                print(f"########### Calendar ID: {calendar_id}", flush=True)
-                print(f"########### Start: {start_str}, End: {end_str}", flush=True)
-                events_result = service.events().list(
-                    calendarId=calendar_id, 
-                    timeMin=start_str,
-                    timeMax=end_str,
-                    singleEvents=True,
-                    orderBy='startTime'
-                ).execute()
+            print(f"########### fetching all events", flush=True)
+            print(f"########### Calendar ID: {calendar_id}", flush=True)
+            print(f"########### Start: {start_str}, End: {end_str}", flush=True)
+            events_result = service.events().list(
+                calendarId=calendar_id, 
+                timeMin=start_str,
+                timeMax=end_str,
+                singleEvents=True,
+                orderBy='startTime'
+            ).execute()
 
             events = events_result.get('items', [])
             print(f"########### Calendar events: {events}")
@@ -203,6 +193,10 @@ def get_upcoming_events(instruction, user_id, is_test=False):
                         "calendar": 'primary' if is_primary else calendar['summary'],
                         **event
                     })
+    
+    if q:
+        action = 'find_with_keyword'
+        return (all_events, is_period_provided, request_timezone, action)
     
     return (all_events, is_period_provided, request_timezone, action)
 

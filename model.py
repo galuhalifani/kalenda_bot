@@ -29,7 +29,7 @@ from auth import decrypt_token, encrypt_token, save_token
 from helpers import parse_llm_answer, clean_instruction_block, readable_date, clean_description, extract_phone_number, get_image_data_url, split_message,send_whatsapp_message, transcribe_audio, extract_json_block
 from calendar_service import update_timezone, get_user_calendar_timezone, get_calendar_service, save_event_to_draft, save_event_to_calendar, get_upcoming_events, update_event_draft, transform_events_to_text
 from session_memory import session_memories, get_user_memory, max_chat_stored, get_latest_memory
-from prompt import prompt_init, prompt_analyzer, prompt_add_event, prompt_retrieve, prompt_main
+from prompt import prompt_init, prompt_analyzer, prompt_add_event, prompt_retrieve, prompt_main, prompt_finder
 from text import get_help_text
 
 if mode == 'test':
@@ -74,6 +74,8 @@ def init_llm(user_id, input, prompt_type, image_data_url=None, user_timezone=Non
             prompt = prompt_init(input, now_utc, user_timezone, user_latest_event_draft, latest_conversations)
         elif prompt_type == 'schedule_analyzer':
             prompt = prompt_analyzer(input, now_utc, user_timezone, user_latest_event_draft, latest_conversations, other_files)
+        elif prompt_type == 'keyword_finder':
+            prompt = prompt_finder(input, now_utc, user_timezone, user_latest_event_draft, latest_conversations, other_files)
         elif prompt_type == 'add_event':
             prompt = prompt_add_event(input, now_utc, user_timezone, user_latest_event_draft, latest_conversations)
         elif prompt_type == 'retrieve':
@@ -169,6 +171,11 @@ def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice
             elif action == 'retrieve_free_time':
                 raw_answer_analyzer = init_llm(user_id, input, 'schedule_analyzer', image_data_url, user_timezone, voice_data_filename, event_list)
                 return raw_answer_analyzer
+            elif action == 'find_with_keyword':
+                raw_answer_finder = init_llm(user_id, input, 'keyword_finder', image_data_url, user_timezone, voice_data_filename, event_list)
+                return raw_answer_finder
+            else:
+                return event_list
         except Exception as e:
             print(f"########### Error retrieving events: {str(e)}", flush=True)
             return "Sorry, I am unable to fetch your events at the moment."
