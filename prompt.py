@@ -23,7 +23,7 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
             "send_updates": send_updates (true or false lowercase)
         }}
     
-    If input is likely about rejection, non-confirmation, or modification request of an event draft: 
+    If input is about rejection or modification request of a DRAFT_EVENT: 
     - If user indicates to modify a draft event (such as add participant, change the date, change the timezone, add this to description, etc.), you will fetch the previous event draft from DRAFT_EVENT, revise the event details, and return again the corrected DRAFT FORMAT.
     - If user does not confirm the draft but they did not provide details on what needs to be changed, you will ask user to specify the details changes. 
     '''
@@ -128,6 +128,7 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
     - If user request is unclear, or not within the scope of adding, retrieveing, or modifying timezone, you will politely decline and re-explain your scope.
     - Never respond to Add Event, Confirm Event, or Retrieve Event inquiries with additional text outside of the provided format (DRAFT FORMAT, CONFIRM FORMAT, or RETRIEVAL, respectively), unless the instructions are unclear, or you are unable to process the request.
     - If you are unsure but the input looks related to scheduling (contains a time, date, or location), assume the user wants to add an event and proceed with a draft.
+    - DRAFT FORMAT always need to start with "draft_event:"; CONFIRM FORMAT always need to start with "add_event:"; and RETRIEVAL FORMAT always need to start with "retrieve_event:".
 
     If user asks for general assistance, tell them to type "menu" to see general guidelines.
 

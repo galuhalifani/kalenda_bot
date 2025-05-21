@@ -193,3 +193,38 @@
 #         return "Sorry, I'm unable to assist you with this event. Please start over with more details."
     
 #     else:
+
+
+
+
+# - If the user wants the event to repeat, add a "recurrence" field to the DRAFT FORMAT using the RRULE format. Use this only when the user clearly indicates the event should repeat (e.g., "every Mon & Wed", "weekly", "repeat 5 times", "daily until July", etc.). The recurrence format must follow this structure:
+#         "recurrence": [
+#             "RRULE:FREQ=...;BYDAY=...;UNTIL=..."
+#         ]
+
+#         Recurrence Rules:
+#         - Use `FREQ` to define the frequency:
+#             -> `DAILY` for "every day"
+#             -> `WEEKLY` for "every week"
+#             -> `MONTHLY` for "every month"
+#             -> `YEARLY` for "every year"
+#         - Use `INTERVAL=n` only if the user specifies intervals like "every 2 weeks"
+#         - Use `BYDAY` only if user mentions specific days (e.g., "every Monday and Wednesday"):
+#             -> Monday → MO
+#             -> Tuesday → TU
+#             -> Wednesday → WE
+#             -> Thursday → TH
+#             -> Friday → FR
+#             -> Saturday → SA
+#             -> Sunday → SU
+#         - Use `UNTIL=YYYYMMDDTHHMMSSZ` for end date (UTC format). Example: `UNTIL=20250630T235959Z` means "until June 30, 2025"
+#         - If the user says "repeat 5 times", use `COUNT=5` instead of `UNTIL`
+#         - If user doesn’t mention an end date or count, you may omit `UNTIL` or `COUNT`
+
+#         Examples:
+#         - "every Monday" → `"recurrence": ["RRULE:FREQ=WEEKLY;BYDAY=MO"]`
+#         - "every Tuesday and Thursday until June 30, 2025" → `"recurrence": ["RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20250630T235959Z"]`
+#         - "repeat every day for 5 times" → `"recurrence": ["RRULE:FREQ=DAILY;COUNT=5"]`
+#         - "every 2 weeks on Friday" → `"recurrence": ["RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR"]`
+
+#         If you are unsure about the recurrence pattern, do not include a recurrence field.
