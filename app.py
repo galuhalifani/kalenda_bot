@@ -271,10 +271,6 @@ def receive_whatsapp():
         resp.message(f"We are sorry, the bot is currently unavailable or under maintenance. Please try again later.")
         return str(resp)
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
-
 @app.route('/testwebhook', methods=['POST'])
 def receive_whatsapp_test():
     try:
