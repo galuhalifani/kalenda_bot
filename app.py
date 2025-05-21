@@ -153,7 +153,10 @@ def oauth_callback():
         return "✅ Google Calendar connected! You can now use the bot."
     except Exception as e:
         print(f"########### ERROR in oauth_callback: {e}", flush=True)
-        return "❌ Your session has expired. Please try again. Type 'authenticate' to generate a new link."
+        if e == "(access_denied)":
+            return "❌ Access not provided. Please allow access for Kalenda and try again."
+        else:
+            return "❌ Unable to authorize connection or your session has expired. Please try again. Type 'authenticate' to generate a new link."
 
 @app.route('/webhook', methods=['POST'])
 def receive_whatsapp():

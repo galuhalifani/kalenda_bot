@@ -1,0 +1,13 @@
+client_type:
+- regular = testing account (kalenda.ai)
+- primary = production account under verification by Google (kalenda-459801)
+
+is_whitelist:
+- phone_number = TWILIO_PHONE_NUMBER_TEST (***7799) --> used for 'regular' client_type
+- Requires user to be whitelisted before connecting via Oauth
+- Currently used for public testing
+
+Else (not is_whitelist):
+- phone_number = TWILIO_PHONE_NUMBER (***6270) used for 'primary' client_type
+- Does not require user to be whitelisted but currently still has unverified warning (pending verification)
+- Currently not used and waiting verification
