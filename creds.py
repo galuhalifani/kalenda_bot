@@ -8,6 +8,8 @@ MONGODB_URL=os.getenv('MONGO_URI')
 OPENAI_KEY=os.getenv('OPENAI_API_KEY')
 CLIENT_ID = os.environ["GOOGLE_CLIENT_ID"]
 CLIENT_SECRET = os.environ["GOOGLE_CLIENT_SECRET"]
+CLIENT_ID_PRIMARY = os.environ["GOOGLE_CLIENT_ID_PRIMARY"]
+CLIENT_SECRET_PRIMARY = os.environ["GOOGLE_CLIENT_SECRET_PRIMARY"]
 TEST_CLIENT_ID = os.environ["TEST_CLIENT_ID"]
 TEST_CLIENT_SECRET = os.environ["TEST_CLIENT_SECRET"]
 TOKEN_URI = os.environ["TOKEN_URI"]
@@ -29,31 +31,25 @@ WHITELIST_KEYWORD = os.environ.get("WHITELIST_KEYWORD")
 ADMIN_NUMBER = os.environ.get("ADMIN_NUMBER")
 WHITELIST_LINK = os.environ.get("WHITELIST_LINK")
 
-env_credentials = {
-    "MONGODB_URL": MONGODB_URL,
-    "OPENAI_KEY": OPENAI_KEY,
-    "CLIENT_ID": CLIENT_ID,
-    "CLIENT_SECRET": CLIENT_SECRET,
-    "TEST_CLIENT_ID": TEST_CLIENT_ID,
-    "TEST_CLIENT_SECRET": TEST_CLIENT_SECRET,
-    "TOKEN_URI": TOKEN_URI,
-    "AUTH_URI": AUTH_URI,
-    "CONNECT_AUTH_URI": CONNECT_AUTH_URI,
-    "CONNECT_AUTH_URI_TEST": CONNECT_AUTH_URI_TEST,
-    "REDIRECT_URI": REDIRECT_URI,
-    "REDIRECT_URI_TEST": REDIRECT_URI_TEST,
-    "TWILIO_SID": TWILIO_SID,
-    "TWILIO_AUTH_TOKEN": TWILIO_AUTH_TOKEN,
-    "SCOPES": SCOPES
-}
 
-def get_credentials():
-    return {
-        "web": {
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET,
-            "redirect_uris": [REDIRECT_URI],
-            "auth_uri": AUTH_URI,
-            "token_uri": TOKEN_URI
+def get_credentials(client_type):
+    if client_type == 'primary':
+        return {
+            "web": {
+                "client_id": CLIENT_ID_PRIMARY,
+                "client_secret": CLIENT_SECRET_PRIMARY,
+                "redirect_uris": [REDIRECT_URI],
+                "auth_uri": AUTH_URI,
+                "token_uri": TOKEN_URI
+            }
         }
-    }
+    else:
+        return {
+            "web": {
+                "client_id": CLIENT_ID,
+                "client_secret": CLIENT_SECRET,
+                "redirect_uris": [REDIRECT_URI],
+                "auth_uri": AUTH_URI,
+                "token_uri": TOKEN_URI
+            }
+        }

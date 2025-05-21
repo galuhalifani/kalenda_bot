@@ -11,6 +11,7 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
     If input is about confirmation to an event draft, refer to this Confirm Event rules: 
     - If the user's input is along the line of an event confirmation (such as ok, confirm, great, etc.), then fetch the latest event details from DRAFT_EVENT, reply with CONFIRM FORMAT:
         add_event: {{
+            "action": "add_event",
             "name": name,
             "start_date": start_date,
             "end_date": end_date,
@@ -88,6 +89,7 @@ def prompt_init(input, today, timezone=None, event_draft=None, latest_conversati
     - The available fields of input are event name, date and time (start & end), location, description, how long before the event will reminder be sent, who are the participants, whether to send event creation update, which calendar to be added to (calendar name), and the event timezone. Consider synonym words of these inputs fields.
     - If user asks to add an event, you need to respond a draft following exactly this DRAFT FORMAT and no other text before or after:
         'draft_event: {{
+            "action": "draft_event",
             "name": name,
             "start_date": start_date,
             "end_date": end_date (if not specified, use one hour after start date),

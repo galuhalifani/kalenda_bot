@@ -288,11 +288,11 @@ def revoke_access_command(resp, user_id):
     resp.message("✅ Your access has been revoked. You are now using our shared test calendar. You can re-authenticate by typing 'authenticate'")
     return str(resp)
     
-def add_pending_auth(user_id, state):
+def add_pending_auth(user_id, state, client_type):
     try:
         pending_auth_collection.update_one(
             {"state": state},
-            {"$set": {"user_id": user_id, "created_at": datetime.now()}},
+            {"$set": {"user_id": user_id, "created_at": datetime.now(), "client_type": client_type}},
             upsert=True
         )
         return True

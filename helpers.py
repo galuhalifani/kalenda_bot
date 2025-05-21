@@ -9,6 +9,7 @@ import pytz
 from twilio.rest import Client as TwilioClient
 import time
 import uuid
+import json
 
 def trim_reply(reply_text):
     max_length=1400
@@ -145,3 +146,49 @@ def extract_json_block(text):
                 return text[start_index:i+1]
                 
     return None
+
+def parse_llm_answer(answer):
+    try:
+        is_answer_string = isinstance(answer, str)
+
+        if not is_answer_string:
+            answer = str(answer)
+        
+        clean_answer = answer.strip()
+
+        if 'add_event:' in clean_answer:
+            return 'add_event'
+        elif 'draft_event:' in clean_answer:
+            return 'draft_event'
+        elif 'retrieve_event:' in clean_answer:
+            return 'retrieve_event'
+        elif 'timezone_set:' in clean_answer:
+            return 'timezone_set'
+        else:
+            json_str = extract_json_block(clean_answer)
+            if not json_str:
+                print("########### No valid JSON block found", flush=True)
+                return None
+            
+            try:
+                event_details = json.loads(json_str)
+                action = event_details.get('action', None)
+                if action == 'add_event':
+                    return 'add_event'
+                elif action == 'draft_event':
+                    return 'draft_event'
+                elif action == 'retrieve_event':
+                    return 'retrieve_event'
+                elif action == 'retrieve_free_time':
+                    return 'retrieve_event'
+                elif action == 'timezone_set':
+                    return 'timezone_set'
+                else:
+                    return None
+            except json.JSONDecodeError:
+                print("########### Malformed JSON block", flush=True)
+                return None
+        
+    except Exception as e:
+        print(f"########### Error parsing LLM answer: {e}", flush=True)
+        return None

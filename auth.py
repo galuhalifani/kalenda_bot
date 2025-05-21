@@ -19,9 +19,9 @@ def decrypt_token(token_str_encrypted):
     fernet = Fernet(FERNET_KEY)
     return fernet.decrypt(token_str_encrypted.encode()).decode()
 
-def save_token(user_id, creds, credentials):
-    client_id = credentials["web"]["client_id"] if credentials else CLIENT_ID
-    client_secret = credentials["web"]["client_secret"] if credentials else CLIENT_SECRET
+def save_token(user_id, creds, credentials, client_type):
+    client_id = credentials["web"]["client_id"] if credentials else (CLIENT_ID if client_type == 'regular' else CLIENT_ID_PRIMARY)
+    client_secret = credentials["web"]["client_secret"] if credentials else (CLIENT_SECRET if client_type == 'regular' else CLIENT_SECRET_PRIMARY)
 
     tokens_collection.update_one(
         {"user_id": user_id},
@@ -43,7 +43,7 @@ def save_token(user_id, creds, credentials):
         }},
     upsert=True)
 
-def generate_auth_link(user_id):
+def generate_auth_link(user_id, client_type):
     token = secrets.token_hex(16)
     print(f"########### Generated token: {token}", flush=True)
     expires = datetime.now() + timedelta(hours=24)
@@ -58,7 +58,7 @@ def generate_auth_link(user_id):
     )
 
     CONNECT_URI = CONNECT_AUTH_URI if mode == 'production' else CONNECT_AUTH_URI_TEST
-    return f"{CONNECT_URI}?user_id={user_id}&token={token}"
+    return f"{CONNECT_URI}?user_id={user_id}&token={token}&client={client_type}"
 
 def verify_auth_token_link(user_id, token):
     print(f"########### Verifying auth token link for user: {user_id}, token: {token}", flush=True)
@@ -91,7 +91,7 @@ def verify_oauth_connection(user_id):
     
     return True
 
-def authenticate_command(incoming_msg, resp, user_id, twilio_number):
+def authenticate_command(incoming_msg, resp, user_id, twilio_number, is_whitelist=False):
     authenticate_args = incoming_msg.split(authenticate_keyword)
     
     if len(authenticate_args) > 1: # if authenticate <email>
@@ -105,7 +105,8 @@ def authenticate_command(incoming_msg, resp, user_id, twilio_number):
                     resp.message("⏳ Your email is now processed for whitelisting. You will receive a confirmation message within 24hr or less once it's added to the whitelist.")
                     return str(resp)
                 else:
-                    auth_link = generate_auth_link(user_id)
+                    client_type = 'regular' if is_whitelist else 'primary'
+                    auth_link = generate_auth_link(user_id, client_type)
                     resp.message(f"❌ This email is already whitelisted. Click to connect your Google Calendar:\n\n{auth_link}.\n\n Select your email, then click _continue_ to connect to your account.")
                     return str(resp)
             except Exception as e:
@@ -121,9 +122,10 @@ def authenticate_command(incoming_msg, resp, user_id, twilio_number):
 def authenticate_only_command(resp, user_id, is_whitelist=False):
     print(f"########### Authenticate only command for user: {user_id}", flush=True)
     has_active_email = check_user_active_email(user_id) if is_whitelist else True
+    client_type = 'regular' if is_whitelist else 'primary'
     print(f"########### User {user_id} has active email: {has_active_email}", flush=True)
     if has_active_email:
-        auth_link = generate_auth_link(user_id)
+        auth_link = generate_auth_link(user_id, client_type)
         text = connect_to_calendar_whitelist(auth_link, has_active_email) if is_whitelist else connect_to_calendar(auth_link, has_active_email)
         resp.message(text)
         return str(resp)
@@ -134,7 +136,7 @@ def authenticate_only_command(resp, user_id, is_whitelist=False):
         resp.message("Your email is pending for whitelisting. We will get back to you in 24h or less. For any questions, reach out to admin at galuh.adika@gmail.com.")
         return str(resp)
 
-def whitelist_admin_command(incoming_msg, resp, user_id, twilio_number):
+def whitelist_admin_command(incoming_msg, resp, user_id, twilio_number, is_whitelist=False):
     if user_id == extract_phone_number(ADMIN_NUMBER):
         message_array = incoming_msg.split(" ")
         if len(message_array) > 1:
@@ -156,8 +158,9 @@ def whitelist_admin_command(incoming_msg, resp, user_id, twilio_number):
                 user_number = update_user_whitelist_status(email, True)
                 if user_number:
                     try:
+                        client_type = 'regular' if is_whitelist else 'primary'
                         whatsapp_number = f"whatsapp:{user_number}"
-                        auth_link = generate_auth_link(user_number)
+                        auth_link = generate_auth_link(user_number, client_type)
                         instruction_text = connect_to_calendar_confirmation(auth_link, email)
                         send_whatsapp_message(whatsapp_number, instruction_text, twilio_number)
                         send_whatsapp_message(ADMIN_NUMBER, f"email {email} has been whitelisted and user {user_number} has been notified.", twilio_number)

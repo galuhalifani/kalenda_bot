@@ -95,23 +95,22 @@ def auth():
     try:
         user_id = request.args.get("user_id")
         token = request.args.get("token")
+        client_type = request.args.get("client_type")
         verification = verify_auth_token_link(user_id, token)
 
         print(f"########### Auth Verification result: {verification}", flush=True)
         if verification != 'verified':
             return verification
         
-        session['user_id'] = user_id
-        credentials = get_credentials()
+        credentials = get_credentials(client_type)
         flow = Flow.from_client_config(
             credentials,
             scopes=SCOPES,
             redirect_uri=REDIRECT_URI if mode == 'production' else REDIRECT_URI_TEST
         )
         auth_url, state = flow.authorization_url(prompt='consent')
-        session["state"] = state
-        add_pending_auth(user_id, state)
-        print("########### SESSION CONTENT auth:", dict(session), flush=True)
+
+        add_pending_auth(user_id, state, client_type)
         return redirect(auth_url)
     except Exception as e:
         print(f"########### ERROR in auth: {e}", flush=True)
@@ -121,22 +120,19 @@ def auth():
 def oauth_callback():
     print(f"########### OAuth callback triggered", flush=True)
     try:
-        print("########### SESSION CONTENT callback:", dict(session), flush=True)
         state_from_query = request.args.get("state")
         if not state_from_query:
             raise Exception("Missing OAuth state")
         
-        state = session.get("state") 
-        user_id = session.get("user_id")
-
-        if not state or not user_id:
-            auth_data = get_pending_auth(state_from_query)
-            if not auth_data:
-                raise Exception("Invalid or expired state")
-            state = auth_data['state']
-            user_id = auth_data['user_id']
+        auth_data = get_pending_auth(state_from_query)
+        if not auth_data:
+            raise Exception("Invalid or expired state")
         
-        credentials = get_credentials()
+        state = auth_data['state']
+        user_id = auth_data['user_id']
+        client_type = auth_data['client_type']
+
+        credentials = get_credentials(client_type)
         flow = Flow.from_client_config(
             credentials,
             scopes=SCOPES,
@@ -147,7 +143,7 @@ def oauth_callback():
         creds = flow.credentials
 
         try:
-            save_token(user_id, creds, credentials)
+            save_token(user_id, creds, credentials, client_type)
             print(f"########### Token saved for user: {user_id}", flush=True)
         except Exception as e:
             print(f"########### ERROR saving token: {e}", flush=True)
@@ -157,7 +153,7 @@ def oauth_callback():
         return "✅ Google Calendar connected! You can now use the bot."
     except Exception as e:
         print(f"########### ERROR in oauth_callback: {e}", flush=True)
-        return "❌ Error during oauth callback. Please try again."
+        return "❌ Your session has expired. Please try again. Type 'authenticate' to generate a new link."
 
 @app.route('/webhook', methods=['POST'])
 def receive_whatsapp():
@@ -174,7 +170,8 @@ def receive_whatsapp():
         is_revoking = lower_incoming_msg.startswith(revoke_access_keyword)
         is_audio = False
         is_image = False
-        twilio_number = TWILIO_PHONE_NUMBER
+        is_using_whitelisting = False
+        twilio_number = TWILIO_PHONE_NUMBER_TEST if is_using_whitelisting else TWILIO_PHONE_NUMBER
 
         if content_type:
             is_audio = bool(media_url) and content_type.startswith("audio/")
@@ -203,25 +200,8 @@ def receive_whatsapp():
             print(f"########### ERROR initial checkings: {e}", flush=True)
 
         try:
-            if is_authenticating:
-                email = lower_incoming_msg[len("authenticate"):].strip()
-                print(f"########### Email: {email}", flush=True)
-                
-                if email: # if authenticate <email>
-                    print(f"########### Authenticate email", flush=True)
-                    return authenticate_command(lower_incoming_msg, resp, user_id, twilio_number)
-                else:
-                    # if just authenticate
-                    return authenticate_only_command(resp, user_id)
-
-            elif is_authenticating_test:
-                is_test = True
-                use_test_account(user_id)
-                resp.message(using_test_calendar)
-                return str(resp)
-            
-            elif is_whitelisting:
-                return whitelist_admin_command(incoming_msg, resp, user_id, twilio_number)       
+            if is_authenticating:                
+                return authenticate_only_command(resp, user_id, is_using_whitelisting)    
 
             elif is_revoking:
                 return revoke_access_command(resp, user_id)
@@ -235,7 +215,7 @@ def receive_whatsapp():
                 oauth_connection_verification = verify_oauth_connection(user_id)
                 if oauth_connection_verification == False:
                     try:
-                        update_send_test_calendar_message(resp, using_test_calendar, user_id)
+                        update_send_test_calendar_message(resp, using_test_calendar, user_id, is_using_whitelisting)
                     except Exception as e:
                         print(f"########### ERROR updating send test calendar message: {e}", flush=True)
 
@@ -290,7 +270,8 @@ def receive_whatsapp_test():
         is_revoking = lower_incoming_msg.startswith(revoke_access_keyword)
         is_audio = False
         is_image = False
-        twilio_number = TWILIO_PHONE_NUMBER_TEST
+        is_using_whitelisting = True
+        twilio_number = TWILIO_PHONE_NUMBER_TEST if is_using_whitelisting else TWILIO_PHONE_NUMBER
 
         if content_type:
             is_audio = bool(media_url) and content_type.startswith("audio/")
@@ -323,19 +304,19 @@ def receive_whatsapp_test():
                 email = lower_incoming_msg[len("authenticate"):].strip()
                 
                 if email: # if authenticate <email>
-                    return authenticate_command(lower_incoming_msg, resp, user_id, twilio_number)
+                    return authenticate_command(lower_incoming_msg, resp, user_id, twilio_number, is_using_whitelisting)
                 else:
                     # if just authenticate
-                    return authenticate_only_command(resp, user_id, True)
+                    return authenticate_only_command(resp, user_id, is_using_whitelisting)
 
-            elif is_authenticating_test:
-                is_test = True
-                use_test_account(user_id)
-                resp.message(using_test_calendar)
-                return str(resp)
+            # elif is_authenticating_test:
+            #     is_test = True
+            #     use_test_account(user_id)
+            #     resp.message(using_test_calendar)
+            #     return str(resp)
             
             elif is_whitelisting:
-                return whitelist_admin_command(incoming_msg, resp, user_id, twilio_number)       
+                return whitelist_admin_command(incoming_msg, resp, user_id, twilio_number, is_using_whitelisting)       
 
             elif is_revoking:
                 return revoke_access_command(resp, user_id)

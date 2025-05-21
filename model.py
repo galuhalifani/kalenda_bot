@@ -26,8 +26,8 @@ import re
 from creds import *
 from database import user_collection, tokens_collection, check_user, check_timezone, add_update_timezone, deduct_chat_balance, check_user_balance
 from auth import decrypt_token, encrypt_token, save_token
-from helpers import clean_instruction_block, readable_date, clean_description, extract_phone_number, get_image_data_url, split_message,send_whatsapp_message, transcribe_audio, extract_json_block
-from calendar_service import get_user_calendar_timezone, get_calendar_service, save_event_to_draft, save_event_to_calendar, get_upcoming_events, update_event_draft, transform_events_to_text
+from helpers import parse_llm_answer, clean_instruction_block, readable_date, clean_description, extract_phone_number, get_image_data_url, split_message,send_whatsapp_message, transcribe_audio, extract_json_block
+from calendar_service import update_timezone, get_user_calendar_timezone, get_calendar_service, save_event_to_draft, save_event_to_calendar, get_upcoming_events, update_event_draft, transform_events_to_text
 from session_memory import session_memories, get_user_memory, max_chat_stored, get_latest_memory
 from prompt import prompt_init, prompt_analyzer, prompt_add_event, prompt_retrieve, prompt_main
 from text import get_help_text
@@ -47,13 +47,14 @@ def init_openai():
 def check_input_not_none(input, image_data_url):
     if input is None and image_data_url is None:
         print(f"########### Invalid input: {input}", flush=True)
-        return "Sorry, I couldn't understand your request. Please try again."
+        raise ValueError("Sorry, I couldn't understand your request. Please try again.")
 
 def init_llm(user_id, input, prompt_type, image_data_url=None, user_timezone=None, voice_data_filename=None, other_files=None):
     print(f"############ Initialized with {mode} mode", flush=True)
     try:
         print(f"########### Timezone: {user_timezone}", flush=True)
         latest_conversations, user_latest_event_draft = get_latest_memory(user_id)
+        now_utc = datetime.now(tzn.utc)
 
         client = init_openai()
         if not client:
@@ -70,13 +71,15 @@ def init_llm(user_id, input, prompt_type, image_data_url=None, user_timezone=Non
         check_input_not_none(input, image_data_url)
 
         if prompt_type == 'main':   
-            prompt = prompt_init(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
+            prompt = prompt_init(input, now_utc, user_timezone, user_latest_event_draft, latest_conversations)
         elif prompt_type == 'schedule_analyzer':
-            prompt = prompt_analyzer(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations, other_files)
+            prompt = prompt_analyzer(input, now_utc, user_timezone, user_latest_event_draft, latest_conversations, other_files)
         elif prompt_type == 'add_event':
-            prompt = prompt_add_event(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
+            prompt = prompt_add_event(input, now_utc, user_timezone, user_latest_event_draft, latest_conversations)
         elif prompt_type == 'retrieve':
-            prompt = prompt_retrieve(input, datetime.now(tzn.utc), user_timezone, user_latest_event_draft, latest_conversations)
+            prompt = prompt_retrieve(input, now_utc, user_timezone, user_latest_event_draft, latest_conversations)
+        else:
+            prompt = prompt_init(input, now_utc, user_timezone, user_latest_event_draft, latest_conversations)
 
         messages=[{
                 'role': 'user',
@@ -116,8 +119,9 @@ def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice
     answer = clean_instruction_block(raw_answer)
     is_answer_string = isinstance(answer, str)
     whatsappNum = f'whatsapp:+{user_id}'
+    parsed_answer = parse_llm_answer(answer)
 
-    if is_answer_string and 'add_event:' in answer.strip():
+    if parsed_answer == 'add_event':
         print(f"########### Adding event: {answer}", flush=True)
         try:
             loading_message = "Adding your event..."
@@ -133,7 +137,7 @@ def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice
             print(f"########### Error adding new event: {e}", flush=True)
             return "Sorry, I could not add the event to your calendar."
 
-    elif is_answer_string and 'draft_event:' in answer.strip():
+    elif parsed_answer == 'draft_event':
         print(f"########### Drafting event: {answer}", flush=True)
         try:
             loading_message = "Drafting..."
@@ -148,7 +152,7 @@ def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice
             print(f"########### Error parsing event details: {str(e)}", flush=True)
             return "Sorry, I couldn't understand the event details."
         
-    elif is_answer_string and 'retrieve_event:' in answer.strip():
+    elif parsed_answer == 'retrieve_event':
         print(f"########### Retrieving events: {answer}", flush=True)
         try:
             loading_message = "Fetching your events..."
@@ -169,24 +173,14 @@ def invoke_model(resp, user_id, input, is_test=False, image_data_url=None, voice
             print(f"########### Error retrieving events: {str(e)}", flush=True)
             return "Sorry, I am unable to fetch your events at the moment."
 
-    elif is_answer_string and 'timezone_set:' in answer.strip():
+    elif parsed_answer == 'timezone_set':
         print(f"########### Setting timezone: {answer}", flush=True)
         try:
-            new_timezone_raw = answer.split('timezone_set: ')[1].strip()
-            new_timezone = extract_json_block(new_timezone_raw)
-            updated_timezone = add_update_timezone(user_id, new_timezone)
-            if updated_timezone:
-                return f'Your timezone has been changed to {new_timezone}. Please proceed with your request.'
-            else:
-                return f'Failed to set your timezone. Please try again.'
+            return update_timezone(answer, user_id)
         except Exception as e:
             print(f"########### Error updating timezone: {str(e)}", flush=True)
             return "Sorry, I could not set your timezone. Please try again."
-        
-    elif is_answer_string and answer.strip().startswith("Event not added"):
-        print(f"########### Event not added: {answer}", flush=True)
-        return "Sorry, I'm unable to assist you with this event. Please start over with more details."
-    
+
     else:
         print(f"########### Instruction not recognized: {answer}", flush=True)
         return answer

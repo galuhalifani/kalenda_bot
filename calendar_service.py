@@ -23,7 +23,7 @@ import base64
 from requests.auth import HTTPBasicAuth
 import re
 from creds import *
-from database import user_collection, tokens_collection
+from database import user_collection, tokens_collection, add_update_timezone
 from auth import decrypt_token, encrypt_token, save_token
 from helpers import readable_date, convert_timezone, all_valid_emails, extract_json_block
 from session_memory import latest_event_draft, get_user_memory, session_memories
@@ -94,9 +94,10 @@ def list_calendars(service):
     return calendar_list
 
 def get_upcoming_events(instruction, user_id, is_test=False):
-    splitted = instruction.split('retrieve_event:')[1].strip()
-    splitted_cleaned = extract_json_block(splitted)
-    event_details = json.loads(splitted_cleaned)
+    is_action_in_instruction = 'retrieve_event:' in instruction
+    json_str_raw = instruction.split('retrieve_event:')[1].strip() if is_action_in_instruction else instruction.strip()
+    json_str = extract_json_block(json_str_raw)
+    event_details = json.loads(json_str)
     is_period_provided = event_details.get('start', None) or event_details.get('end', None) or event_details.get('q', None)
     action = event_details.get('action', 'retrieve')
 
@@ -277,11 +278,12 @@ def update_event_draft(user_id, new_draft):
 def save_event_to_draft(instruction, user_id, is_test=False):
     print(f"########### save_event_to_draft: {instruction}", flush=True)
 
-    json_str_raw = instruction.split('draft_event:')[1].strip()
+    is_action_in_instruction = 'draft_event:' in instruction
+    json_str_raw = instruction.split('draft_event:')[1].strip() if is_action_in_instruction else instruction.strip()
     json_str = extract_json_block(json_str_raw)
     print(f"########### details to be parsed: {json_str}", flush=True)
-    event_details = json.loads(json_str)
 
+    event_details = json.loads(json_str)
     print(f"########### JSON parsed Event details: {event_details}", flush=True)
 
     start_date = readable_date(event_details['start_date'], True)
@@ -345,7 +347,8 @@ def save_event_to_calendar(instruction, user_id, is_test=False):
     service = get_calendar_service(user_id, is_test)
 
     try:
-        json_str_raw = instruction.split('add_event:')[1].strip()
+        is_action_in_instruction = 'add_event:' in instruction
+        json_str_raw = instruction.split('add_event:')[1].strip() if is_action_in_instruction else instruction.strip()
         json_str = extract_json_block(json_str_raw)
         print(f"####### JSON string: {json_str}")
         event_details = json.loads(json_str)
@@ -452,5 +455,14 @@ def save_event_to_calendar(instruction, user_id, is_test=False):
         print(f"########### Error adding to g-cal: {e}")
         return None
     
+def update_timezone(answer, user_id):
+    is_action_in_instruction = 'timezone_set:' in answer
+    json_str_raw = answer.split('timezone_set: ')[1].strip() if is_action_in_instruction else answer.strip()
+    new_timezone = extract_json_block(json_str_raw)
+    updated_timezone = add_update_timezone(user_id, new_timezone)
+    if updated_timezone:
+        return f'Your timezone has been changed to {new_timezone}. Please proceed with your request.'
+    else:
+        return f'Failed to set your timezone. Please try again.'
 
     
