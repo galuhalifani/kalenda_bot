@@ -27,18 +27,22 @@ Kalenda (“we”, “our”, or “us”) is committed to protecting your priva
 
 ## 🛡️ How We Use Your Data
 
+All data accessed via Google APIs is used solely to provide the Kalenda service to the end user. 
+
 We use your data only to:
 - Understand and respond to your requests
 - Help you create, summarize, and manage calendar events
 - Connect to your Google Calendar if authorized
 
-We **do not** use your data for advertising or third-party analytics.
+We **do not** use your data for advertising, third-party analytics, or any kinds of artificial intelligence or machine learning training
 
 ---
 
 ## 🧠 AI Processing
 
-Kalenda uses AI models (e.g., OpenAI’s GPT and Whisper) to understand your messages. Processing may include text summarization, intent extraction, and voice transcription. All AI processing is secure and used solely to serve your request.
+Kalenda uses AI models (e.g., OpenAI’s GPT and Whisper) to understand your messages. Processing may include text summarization, intent extraction, and voice transcription. All AI processing is secure and used solely to serve your request. 
+
+Kalenda does **not** use any data obtained through Google Workspace APIs — including any user and calendar data — to develop, improve, or train generalized artificial intelligence (AI) or machine learning (ML) models. 
 
 ---
 
